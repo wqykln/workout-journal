@@ -341,6 +341,17 @@ ul,ol{list-style:none;}
   font-family:"Noto Serif SC",serif;font-weight:900;font-size:22px;
   color:var(--primary);
 }
+/* 今日记录五色循环：和统计页一致 */
+.record-row.c0 .count{color:var(--accent);}
+.record-row.c0 .emoji{background:linear-gradient(135deg,#EFF8F3,#D7EBDE);}
+.record-row.c1 .count{color:var(--primary);}
+.record-row.c1 .emoji{background:linear-gradient(135deg,#FFF0EA,#FFD9CC);}
+.record-row.c2 .count{color:var(--amber);}
+.record-row.c2 .emoji{background:linear-gradient(135deg,#FFF8E8,#F5E4C8);}
+.record-row.c3 .count{color:var(--indigo);}
+.record-row.c3 .emoji{background:linear-gradient(135deg,#EEF0F8,#D7DCEE);}
+.record-row.c4 .count{color:var(--rose);}
+.record-row.c4 .emoji{background:linear-gradient(135deg,#FCEEF1,#F5D7DE);}
 .record-row .unit{color:var(--ink-soft);font-size:12px;margin-left:-2px;}
 .record-row .del{
   color:var(--ink-faint);font-size:16px;padding:8px 6px;min-width:34px;
@@ -439,7 +450,7 @@ ul,ol{list-style:none;}
 }
 .bar-head .val .u{font-size:12px;color:var(--ink-soft);font-family:"Noto Sans SC";font-weight:400;}
 .bar-track{
-  height:11px;background:linear-gradient(180deg, rgba(42,33,24,.06), rgba(42,33,24,.03));
+  height:14px;background:linear-gradient(180deg, rgba(42,33,24,.06), rgba(42,33,24,.03));
   border-radius:999px;overflow:hidden;
   box-shadow:inset 0 1px 2px rgba(42,33,24,.08);
 }
@@ -533,6 +544,12 @@ ul,ol{list-style:none;}
 .type-row .act:active{transform:scale(.92);}
 .type-row .act.del:active{background:#FCE5DE;color:var(--warning);box-shadow:0 0 0 1px rgba(193,70,43,.3);}
 .type-row .act.edit:active{background:#DDEEE5;color:var(--accent);box-shadow:0 0 0 1px rgba(15,110,86,.3);}
+/* 类型管理页五色循环 emoji 背景 */
+.type-row.c0 .emo{background:linear-gradient(135deg,#EFF8F3,#D7EBDE);}
+.type-row.c1 .emo{background:linear-gradient(135deg,#FFF0EA,#FFD9CC);}
+.type-row.c2 .emo{background:linear-gradient(135deg,#FFF8E8,#F5E4C8);}
+.type-row.c3 .emo{background:linear-gradient(135deg,#EEF0F8,#D7DCEE);}
+.type-row.c4 .emo{background:linear-gradient(135deg,#FCEEF1,#F5D7DE);}
 
 .fab{
   position:fixed;
@@ -1330,12 +1347,13 @@ ul,ol{list-style:none;}
         </div>`;
       return;
     }
-    box.innerHTML = todays.map(r=>{
+    box.innerHTML = todays.map((r, idx)=>{
       const t = Store.findType(r.typeId);
       const name = t ? t.name : '已删除项目';
       const emoji = t ? t.emoji : '❓';
+      const colorCls = 'c'+(idx % 5);
       return `
-        <div class="record-row">
+        <div class="record-row ${colorCls}">
           <div class="left">
             <div class="emoji">${emoji}</div>
             <div>
@@ -1410,8 +1428,10 @@ ul,ol{list-style:none;}
         </div>`;
       return;
     }
-    box.innerHTML = types.map(t=>`
-      <div class="type-row">
+    box.innerHTML = types.map((t, idx)=>{
+      const colorCls = 'c'+(idx % 5);
+      return `
+      <div class="type-row ${colorCls}">
         <div class="left">
           <div class="emo">${t.emoji}</div>
           <div class="info">
