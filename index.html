@@ -1,0 +1,1923 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#F6F1E7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="运动打卡">
+<title>运动打卡 · 运动手账</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=Noto+Serif+SC:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+/* ============ Design Tokens（暖色手账版 v2） ============ */
+:root{
+  --bg:          #F6F1E7;
+  --bg-card:     #FFFBF2;   /* 暖调米黄 → 更像笔记本纸张 */
+  --ink:         #2A2118;   /* 柔和墨色，不刺眼 */
+  --ink-soft:    #7A6F60;
+  --ink-faint:   #B9AE9D;
+  --primary:     #E4572E;   /* 朱红 - 打卡主色 */
+  --primary-soft:#F5C5AE;
+  --accent:      #0F6E56;   /* 墨绿 - 统计/类型 */
+  --accent-soft: #BED9CC;
+  --amber:       #C98A2E;   /* 琥珀黄 - 装饰色 1 */
+  --indigo:      #4A5899;   /* 藏青 - 装饰色 2 */
+  --rose:        #C9546A;   /* 玫瑰红 - 装饰色 3 */
+  --warning:     #C1462B;
+  --divider:     #EADFCB;   /* 手账虚线：奶油黄 */
+  --shadow-sm:   0 2px 8px rgba(42,33,24,.05), 0 1px 0 rgba(255,255,255,.8) inset;
+  --shadow-md:   0 8px 22px rgba(42,33,24,.08);
+  --shadow-lg:   0 18px 40px rgba(228,87,46,.24), 0 4px 10px rgba(42,33,24,.08);
+  --radius-lg:   22px;
+  --radius-md:   16px;
+  --radius-sm:   10px;
+  --nav-h:       70px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ============ Reset ============ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{
+  /* 系统字体降级 + 中文衬线 + 无衬线双栈，字体未加载时也好看 */
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB",
+               system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  color:var(--ink);
+  /* 手账纸质背景：奶油米白 + 极细点阵纹理 + 左右两条淡色装订线 */
+  background:
+    linear-gradient(90deg,
+      transparent 0, transparent 6px,
+      rgba(228,87,46,.04) 6px, rgba(228,87,46,.04) 8px,
+      transparent 8px, transparent calc(100% - 8px),
+      rgba(228,87,46,.04) calc(100% - 8px), rgba(228,87,46,.04) calc(100% - 6px),
+      transparent calc(100% - 6px)),
+    /* 1% 强度的点阵噪点，模拟和纸质感 */
+    radial-gradient(rgba(42,33,24,.045) 1px, transparent 1px) 0 0 / 18px 18px,
+    radial-gradient(rgba(42,33,24,.03) 1px, transparent 1px) 9px 9px / 18px 18px,
+    var(--bg);
+  line-height:1.6;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+}
+button{font-family:inherit;color:inherit;border:none;background:none;cursor:pointer;}
+input{font-family:inherit;color:inherit;outline:none;border:none;background:transparent;}
+ul,ol{list-style:none;}
+
+/* ============ 衬线标题字体（双字体降级），首字母用 tabular 对齐数字 ============ */
+.font-serif{
+  font-family:"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", Georgia, serif;
+  font-feature-settings:"tnum";
+}
+/* 所有统计数字强制 tabular-nums 等宽对齐 */
+.num, .count, .summary-item .num, .total-card .num, .bar-head .val{
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum";
+  letter-spacing:-.01em;
+}
+
+/* ============ App Shell ============ */
+.app{
+  max-width:430px;
+  margin:0 auto;
+  min-height:100vh;
+  background:transparent; /* 继承 body 的纸质纹理 */
+  position:relative;
+  padding-bottom: calc(var(--nav-h) + var(--safe-bottom) + 20px);
+}
+.page{
+  display:none;
+  padding:18px 18px 0;
+}
+.page.active{display:block;}
+.page.active > *{
+  opacity:0;transform:translateY(10px);
+  animation:staggerIn .55s cubic-bezier(.2,.8,.2,1) forwards;
+}
+.page.active > *:nth-child(1){animation-delay:.02s;}
+.page.active > *:nth-child(2){animation-delay:.10s;}
+.page.active > *:nth-child(3){animation-delay:.18s;}
+.page.active > *:nth-child(4){animation-delay:.26s;}
+@keyframes staggerIn{
+  to{opacity:1;transform:translateY(0);}
+}
+
+/* ============ 底部导航（手账贴纸风） ============ */
+.nav{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:calc(100% - 24px);max-width:406px;
+  height: calc(var(--nav-h) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  /* 像一张小贴纸：顶部和左右有胶带边 */
+  background:var(--bg-card);
+  border:1px solid var(--divider);
+  border-radius:22px 22px 18px 18px;
+  margin-bottom:10px;
+  display:grid;grid-template-columns:repeat(3,1fr);
+  z-index:50;
+  box-shadow:var(--shadow-md);
+}
+/* 顶部两条胶带：朱红 + 墨绿小方块 */
+.nav::before, .nav::after{
+  content:"";position:absolute;top:-8px;
+  width:46px;height:14px;border-radius:3px;
+  opacity:.78;
+  box-shadow:0 2px 4px rgba(42,33,24,.12);
+}
+.nav::before{
+  left:28%;transform:translateX(-50%) rotate(-4deg);
+  background:repeating-linear-gradient(135deg,var(--primary) 0 6px, rgba(255,255,255,.15) 6px 10px);
+}
+.nav::after{
+  right:28%;transform:translateX(50%) rotate(3deg);
+  background:repeating-linear-gradient(135deg,var(--accent) 0 6px, rgba(255,255,255,.15) 6px 10px);
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;font-size:12px;color:var(--ink-faint);
+  transition:color .2s, transform .15s;
+  min-height:44px;
+  position:relative;
+}
+.nav-item.active{color:var(--accent);font-weight:700;transform:translateY(-2px);}
+.nav-item .ico{font-size:22px;line-height:1;filter:saturate(.95);}
+.nav-item[data-tab="home"].active{color:var(--primary);}
+.nav-item:active{transform:scale(.95);}
+
+/* ============ 顶部信息区（带小装饰） ============ */
+.top-bar{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  padding:14px 2px 10px;
+  position:relative;
+}
+/* 日期旁的小红点装饰（手账本的装订点） */
+.top-bar::before{
+  content:"";position:absolute;left:-10px;top:28px;
+  width:5px;height:5px;border-radius:50%;background:var(--primary);opacity:.35;
+  box-shadow:0 18px 0 rgba(15,110,86,.35), 0 36px 0 rgba(201,138,46,.35);
+}
+.date-main{
+  font-family:"Noto Serif SC",serif;
+  font-weight:900;font-size:28px;line-height:1.12;
+  letter-spacing:.4px;
+  /* 手账下划波浪：强调日期 */
+  background:linear-gradient(transparent 72%, rgba(228,87,46,.22) 72% 88%, transparent 88%);
+  padding:0 2px;
+  display:inline-block;
+}
+.date-sub{color:var(--ink-soft);font-size:13px;margin-top:6px;line-height:1.4;}
+.badge{
+  /* 像一张贴在右上角的圆形小贴纸 */
+  background:var(--accent);color:#FFFBF2;
+  padding:7px 15px;border-radius:999px;
+  font-size:12px;font-weight:700;
+  box-shadow:0 3px 0 rgba(15,110,86,.28), 0 4px 10px rgba(42,33,24,.1);
+  white-space:nowrap;
+  position:relative;
+  letter-spacing:.5px;
+  transform:rotate(-2deg);
+}
+.badge::after{
+  content:"";position:absolute;top:-3px;right:10px;
+  width:14px;height:5px;background:rgba(201,138,46,.85);
+  transform:rotate(6deg);border-radius:2px;opacity:.7;
+}
+
+/* ============ 大圆形打卡按钮（呼吸 + 立体质感） ============ */
+.hero{
+  margin:26px 0 22px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;
+}
+/* 大按钮底下一张「打卡」纸条装饰 */
+.hero::after{
+  content:"CHECK-IN";position:absolute;
+  bottom:-2px;right:calc(50% - 98px);
+  font-size:10px;letter-spacing:2.5px;font-weight:700;
+  color:rgba(228,87,46,.55);
+  transform:rotate(6deg);
+  font-family:"Noto Serif SC",serif;
+}
+.big-checkin{
+  width:188px;height:188px;border-radius:50%;
+  /* 朱红多层渐变，模拟盖印章的质感 */
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255,255,255,.35) 0%, transparent 38%),
+    radial-gradient(circle at 68% 78%, rgba(120,30,0,.22) 0%, transparent 42%),
+    linear-gradient(145deg, #F08563 0%, var(--primary) 55%, #B53A16 100%);
+  color:#FFFBF2;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  /* 盖印章双重阴影 + 内描边虚线 */
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 0 0 3px rgba(255,255,255,.18),
+    inset 0 -8px 18px rgba(120,30,0,.2),
+    inset 0 4px 10px rgba(255,255,255,.15);
+  transition:transform .12s cubic-bezier(.2,.8,.2,1), box-shadow .2s;
+  font-family:"Noto Serif SC",serif;
+  position:relative;
+  animation:breathe 3.2s ease-in-out infinite;
+}
+@keyframes breathe{
+  0%,100%{box-shadow:var(--shadow-lg), inset 0 0 0 3px rgba(255,255,255,.18), inset 0 -8px 18px rgba(120,30,0,.2), inset 0 4px 10px rgba(255,255,255,.15);}
+  50%    {box-shadow:0 22px 48px rgba(228,87,46,.30), 0 6px 14px rgba(42,33,24,.09), inset 0 0 0 3px rgba(255,255,255,.22), inset 0 -8px 18px rgba(120,30,0,.2), inset 0 4px 10px rgba(255,255,255,.15);}
+}
+.big-checkin::after{
+  /* 圆形印章的锯齿边（极淡） */
+  content:"";position:absolute;inset:8px;border-radius:50%;
+  border:1.5px dashed rgba(255,255,255,.22);
+  pointer-events:none;
+}
+.big-checkin:active{transform:scale(.95) rotate(-1deg);filter:saturate(1.05);}
+.big-checkin .target{font-size:48px;line-height:1;filter:drop-shadow(0 2px 2px rgba(0,0,0,.12));}
+.big-checkin .label{font-size:22px;font-weight:900;margin-top:4px;letter-spacing:3px;text-shadow:0 1px 0 rgba(120,30,0,.2);}
+.big-checkin .hint{font-size:11px;opacity:.82;margin-top:6px;font-family:"Noto Sans SC",sans-serif;letter-spacing:1.5px;text-transform:uppercase;}
+
+/* 打卡成功时的弹跳动画（临时类） */
+.big-checkin.celebrate{
+  animation:popWin .6s cubic-bezier(.2,1.4,.4,1);
+}
+@keyframes popWin{
+  0%{transform:scale(1);}
+  35%{transform:scale(1.12) rotate(-2deg);}
+  65%{transform:scale(.95) rotate(1.5deg);}
+  100%{transform:scale(1) rotate(0);}
+}
+
+/* ============ 卡片通用（贴纸 + 折角） ============ */
+.card{
+  background:var(--bg-card);
+  border-radius:var(--radius-lg);
+  padding:18px 18px 18px;
+  box-shadow:var(--shadow-sm);
+  border:1px solid var(--divider);
+  position:relative;
+  /* 轻微纸张倾斜，每两张错开角度增加手账感 */
+}
+.card::before{
+  /* 左上胶带：琥珀色 */
+  content:"";position:absolute;top:-7px;left:22px;
+  width:52px;height:15px;border-radius:2px;
+  background:repeating-linear-gradient(45deg,
+    rgba(201,138,46,.78) 0 5px, rgba(201,138,46,.62) 5px 9px);
+  transform:rotate(-5deg);
+  box-shadow:0 2px 4px rgba(42,33,24,.1);
+  opacity:.88;
+}
+.card + .card{margin-top:16px;}
+.card + .card::before{
+  /* 第二张卡：换藏青胶带 + 右上 */
+  left:auto;right:24px;
+  background:repeating-linear-gradient(45deg,
+    rgba(74,88,153,.7) 0 5px, rgba(74,88,153,.56) 5px 9px);
+  transform:rotate(4deg);
+}
+/* 右下纸折角 */
+.card::after{
+  content:"";position:absolute;right:0;bottom:0;
+  width:22px;height:22px;
+  background:
+    linear-gradient(225deg, var(--bg-card) 48%, transparent 50%),
+    linear-gradient(45deg, rgba(42,33,24,.06) 0 100%);
+  border-top-left-radius:6px;
+  border-bottom-right-radius:var(--radius-lg);
+  box-shadow:-1px -1px 1px rgba(42,33,24,.05) inset;
+  pointer-events:none;
+}
+.card-title{
+  font-family:"Noto Serif SC",serif;
+  font-weight:700;font-size:17px;
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:14px;
+  letter-spacing:.3px;
+  padding-top:4px;
+}
+/* 标题左侧小竖线装饰 */
+.card-title::before{
+  content:"";display:inline-block;width:4px;height:16px;
+  background:var(--primary);border-radius:2px;margin-right:8px;
+  vertical-align:-2px;
+  box-shadow:6px 0 0 var(--amber);
+}
+.card + .card .card-title::before{background:var(--accent);box-shadow:6px 0 0 var(--indigo);}
+.card-title .more{
+  color:var(--ink-soft);font-size:12px;font-weight:400;
+  font-family:"Noto Sans SC",sans-serif;
+  background:rgba(42,33,24,.03);padding:3px 10px;border-radius:999px;
+}
+
+/* ============ 今日汇总卡（彩色贴纸两格） ============ */
+.summary-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:14px;
+}
+.summary-item{
+  background:linear-gradient(160deg, #FFF8E8 0%, #FFECDA 100%);
+  border-radius:var(--radius-md);
+  padding:18px 12px 16px;
+  border:1px solid rgba(228,87,46,.12);
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+.summary-item::before{
+  content:"";position:absolute;top:-30px;right:-30px;
+  width:80px;height:80px;border-radius:50%;
+  background:radial-gradient(circle, rgba(228,87,46,.14) 0%, transparent 70%);
+}
+.summary-item .num{
+  font-family:"Noto Serif SC",serif;
+  font-size:34px;font-weight:900;line-height:1;
+  color:var(--primary);
+  text-shadow:0 1px 0 rgba(255,255,255,.6);
+  position:relative;
+}
+.summary-item .lbl{color:var(--ink-soft);font-size:12px;margin-top:8px;position:relative;}
+.summary-item.green{
+  background:linear-gradient(160deg, #EFF8F3 0%, #D7EBDE 100%);
+  border-color:rgba(15,110,86,.12);
+}
+.summary-item.green::before{
+  background:radial-gradient(circle, rgba(15,110,86,.14) 0%, transparent 70%);
+}
+.summary-item.green .num{color:var(--accent);}
+
+/* ============ 记录列表（贴纸每行独立） ============ */
+.record-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 10px;
+  margin:0 -6px;
+  border-radius:14px;
+  border-bottom:none;
+  transition:background .15s;
+  animation:slideIn .4s cubic-bezier(.2,.8,.2,1);
+  position:relative;
+}
+.record-row + .record-row{
+  margin-top:2px;border-top:1px dashed var(--divider);
+}
+.record-row:active{background:rgba(42,33,24,.03);}
+.record-row .left{display:flex;align-items:center;gap:12px;min-width:0;}
+.record-row .emoji{
+  width:44px;height:44px;border-radius:14px;
+  background:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:23px;flex-shrink:0;
+  box-shadow:0 1px 0 rgba(42,33,24,.05), 0 0 0 1px var(--divider);
+}
+.record-row .name{font-weight:600;font-size:15px;}
+.record-row .time{color:var(--ink-soft);font-size:12px;margin-top:3px;}
+.record-row .right{display:flex;align-items:center;gap:10px;}
+.record-row .count{
+  font-family:"Noto Serif SC",serif;font-weight:900;font-size:22px;
+  color:var(--primary);
+}
+.record-row .unit{color:var(--ink-soft);font-size:12px;margin-left:-2px;}
+.record-row .del{
+  color:var(--ink-faint);font-size:16px;padding:8px 6px;min-width:34px;
+  transition:color .2s, transform .15s;
+  border-radius:10px;
+}
+.record-row .del:active{color:var(--warning);transform:scale(.92);background:rgba(193,70,43,.07);}
+@keyframes slideIn{
+  from{opacity:0;transform:translateX(-8px);}
+  to{opacity:1;transform:translateX(0);}
+}
+.empty{
+  padding:46px 16px 42px;text-align:center;color:var(--ink-soft);
+  position:relative;
+}
+.empty .emo{
+  font-size:52px;display:inline-block;margin-bottom:12px;opacity:.85;
+  animation:floaty 3s ease-in-out infinite;
+}
+.empty .txt{font-size:14px;line-height:1.7;}
+@keyframes floaty{
+  0%,100%{transform:translateY(0) rotate(-2deg);}
+  50%{transform:translateY(-6px) rotate(2deg);}
+}
+
+/* ============ 彩带粒子（打卡成功时出现） ============ */
+.confetti-layer{
+  position:fixed;inset:0;pointer-events:none;z-index:300;overflow:hidden;
+}
+.confetti-piece{
+  position:absolute;width:8px;height:12px;top:-20px;
+  border-radius:2px;opacity:0;
+  animation:confettiFall 1.6s cubic-bezier(.2,.7,.3,1) forwards;
+}
+@keyframes confettiFall{
+  0%{transform:translate3d(0,0,0) rotate(0);opacity:1;}
+  100%{transform:translate3d(var(--dx,0), calc(100vh + 60px), 0) rotate(var(--rot, 360deg));opacity:1;}
+}
+
+/* ============ 统计页（四色循环条形 + 手账标签段） ============ */
+.segment{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  background:var(--bg-card);
+  border:1px solid var(--divider);
+  border-radius:999px;
+  padding:5px;
+  margin-bottom:18px;
+  box-shadow:var(--shadow-sm);
+  position:relative;
+}
+.segment::before{
+  content:"";position:absolute;top:-6px;left:50%;transform:translateX(-50%) rotate(-2deg);
+  width:60px;height:13px;border-radius:2px;
+  background:repeating-linear-gradient(45deg,
+    rgba(201,84,106,.72) 0 5px, rgba(201,84,106,.56) 5px 9px);
+  opacity:.85;
+}
+.segment button{
+  padding:10px 0;border-radius:999px;
+  font-size:14px;font-weight:500;color:var(--ink-soft);
+  transition:all .22s cubic-bezier(.2,.8,.2,1);
+  letter-spacing:.5px;
+}
+.segment button.on{
+  background:linear-gradient(135deg, var(--accent) 0%, #1A8F71 100%);
+  color:#FFFBF2;font-weight:700;
+  box-shadow:0 3px 10px rgba(15,110,86,.25), inset 0 1px 0 rgba(255,255,255,.2);
+}
+.range-label{
+  color:var(--ink-soft);font-size:13px;margin-bottom:18px;
+  padding-left:4px;
+  font-family:"Noto Serif SC",serif;
+  letter-spacing:.3px;
+}
+.range-label::before{content:"📅 ";margin-right:2px;}
+
+/* 条形图（每行独立配色） */
+.bar-row{
+  padding:14px 8px;
+  border-bottom:1px dashed var(--divider);
+  border-radius:12px;
+  margin:0 -4px;
+}
+.bar-row:last-child{border-bottom:none;}
+.bar-row:nth-child(odd){background:rgba(42,33,24,.015);}
+.bar-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:8px;
+}
+.bar-head .left{display:flex;align-items:center;gap:10px;min-width:0;}
+.bar-head .emo{font-size:20px;}
+.bar-head .nm{font-size:14px;font-weight:600;}
+.bar-head .tag-deleted{
+  font-size:10px;background:rgba(122,111,96,.15);color:var(--ink-soft);
+  padding:2px 7px;border-radius:4px;margin-left:6px;font-weight:500;
+}
+.bar-head .val{
+  font-family:"Noto Serif SC",serif;font-weight:900;font-size:19px;
+  display:flex;align-items:baseline;gap:2px;
+}
+.bar-head .val .u{font-size:12px;color:var(--ink-soft);font-family:"Noto Sans SC";font-weight:400;}
+.bar-track{
+  height:11px;background:linear-gradient(180deg, rgba(42,33,24,.06), rgba(42,33,24,.03));
+  border-radius:999px;overflow:hidden;
+  box-shadow:inset 0 1px 2px rgba(42,33,24,.08);
+}
+.bar-fill{
+  height:100%;border-radius:999px;
+  transition:width .7s cubic-bezier(.2,.8,.2,1);
+  width:0;
+  position:relative;
+}
+/* 给 bar-fill 一个进度点（纸胶带高亮头） */
+.bar-fill::after{
+  content:"";position:absolute;right:2px;top:50%;transform:translateY(-50%);
+  width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.7);
+  box-shadow:0 0 0 1px rgba(255,255,255,.4);
+}
+/* 4 色循环，不同运动类型条形不一样的手账贴纸色（在 JS 中通过 nth-mod 设置 class 或直接 CSS var 注入） */
+.bar-fill.c0{background:linear-gradient(90deg, var(--accent) 0%, #1A8F71 100%);}
+.bar-head.c0 .val{color:var(--accent);}
+.bar-fill.c1{background:linear-gradient(90deg, var(--primary) 0%, #F08563 100%);}
+.bar-head.c1 .val{color:var(--primary);}
+.bar-fill.c2{background:linear-gradient(90deg, var(--amber) 0%, #E6B267 100%);}
+.bar-head.c2 .val{color:var(--amber);}
+.bar-fill.c3{background:linear-gradient(90deg, var(--indigo) 0%, #6E7CBA 100%);}
+.bar-head.c3 .val{color:var(--indigo);}
+.bar-fill.c4{background:linear-gradient(90deg, var(--rose) 0%, #DB8393 100%);}
+.bar-head.c4 .val{color:var(--rose);}
+
+.total-card{
+  margin-top:16px;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(255,255,255,.18) 0%, transparent 45%),
+    radial-gradient(circle at 85% 80%, rgba(255,255,255,.12) 0%, transparent 40%),
+    linear-gradient(135deg, var(--accent) 0%, #1A8F71 55%, var(--amber) 160%);
+  color:#FFFBF2;border-radius:var(--radius-lg);
+  padding:22px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:var(--shadow-md), inset 0 1px 0 rgba(255,255,255,.2);
+  position:relative;
+  overflow:hidden;
+}
+.total-card::before{
+  /* 角落小字贴纸装饰：TOTAL */
+  content:"TOTAL";position:absolute;top:10px;right:-22px;
+  transform:rotate(35deg);
+  font-size:9px;letter-spacing:2px;font-weight:900;
+  background:rgba(255,255,255,.16);color:rgba(255,255,255,.8);
+  padding:2px 28px;
+}
+.total-card .lbl{font-size:13px;opacity:.9;position:relative;}
+.total-card .lbl .t{
+  font-family:"Noto Serif SC",serif;font-weight:700;font-size:16px;
+  display:block;margin-bottom:4px;opacity:1;letter-spacing:.5px;
+}
+.total-card .num{font-family:"Noto Serif SC",serif;font-weight:900;font-size:38px;line-height:1;text-shadow:0 1px 0 rgba(0,0,0,.15);}
+.total-card .num .u{font-size:14px;font-weight:400;opacity:.85;margin-left:3px;font-family:"Noto Sans SC";}
+
+/* ============ 类型管理页 ============ */
+.type-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 10px;
+  margin:0 -4px;
+  border-radius:14px;
+  border-bottom:none;
+  transition:background .15s;
+}
+.type-row + .type-row{border-top:1px dashed var(--divider);}
+.type-row:active{background:rgba(42,33,24,.03);}
+.type-row .left{display:flex;align-items:center;gap:12px;min-width:0;}
+.type-row .emo{
+  width:46px;height:46px;border-radius:15px;
+  background:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:25px;flex-shrink:0;
+  box-shadow:0 1px 0 rgba(42,33,24,.05), 0 0 0 1px var(--divider);
+}
+.type-row .info{min-width:0;}
+.type-row .nm{font-weight:600;font-size:15px;}
+.type-row .def{
+  color:var(--ink-soft);font-size:12px;margin-top:3px;
+  background:rgba(42,33,24,.04);display:inline-block;padding:1px 8px;border-radius:4px;
+}
+.type-row .actions{display:flex;gap:6px;flex-shrink:0;}
+.type-row .act{
+  min-width:40px;height:40px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;color:var(--ink-soft);
+  background:#fff;
+  transition:all .15s;
+  box-shadow:0 1px 0 rgba(42,33,24,.04), 0 0 0 1px var(--divider);
+}
+.type-row .act:active{transform:scale(.92);}
+.type-row .act.del:active{background:#FCE5DE;color:var(--warning);box-shadow:0 0 0 1px rgba(193,70,43,.3);}
+.type-row .act.edit:active{background:#DDEEE5;color:var(--accent);box-shadow:0 0 0 1px rgba(15,110,86,.3);}
+
+.fab{
+  position:fixed;
+  bottom: calc(var(--nav-h) + var(--safe-bottom) + 20px);
+  left:50%;transform:translateX(-50%);
+  width:calc(100% - 56px);max-width:374px;
+  /* 朱红盖印风格：多层渐变 + 胶带装饰 */
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,.22) 0%, transparent 50%),
+    linear-gradient(145deg, #F08563 0%, var(--primary) 55%, #B53A16 100%);
+  color:#FFFBF2;
+  padding:16px;border-radius:999px;
+  font-size:16px;font-weight:700;
+  box-shadow:var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,.2);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:transform .12s;
+  z-index:30;
+  letter-spacing:.5px;
+}
+.fab::before, .fab::after{
+  content:"";position:absolute;top:-5px;
+  width:36px;height:10px;border-radius:2px;
+  background:repeating-linear-gradient(45deg,
+    rgba(201,138,46,.75) 0 4px, rgba(201,138,46,.56) 4px 7px);
+  transform:rotate(-6deg);
+  opacity:.85;
+}
+.fab::before{left:24px;}
+.fab::after{right:24px;transform:rotate(6deg);background:repeating-linear-gradient(45deg,rgba(74,88,153,.62) 0 4px, rgba(74,88,153,.48) 4px 7px);}
+.fab:active{transform:translateX(-50%) scale(.97);}
+.fab .plus{font-size:20px;line-height:1;font-weight:900;}
+
+/* ============ 弹层 Sheet（手账便签本风格） ============ */
+.mask{
+  position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse at top, rgba(42,33,24,.35) 0%, rgba(42,33,24,.62) 100%);
+  z-index:100;display:none;
+  animation:maskIn .22s ease;
+  backdrop-filter:blur(2px);
+  -webkit-backdrop-filter:blur(2px);
+}
+.mask.show{display:block;}
+@keyframes maskIn{from{opacity:0;}to{opacity:1;}}
+
+.sheet{
+  position:fixed;left:50%;transform:translateX(-50%) translateY(100%);
+  bottom:0;width:100%;max-width:430px;
+  background:var(--bg-card);
+  border-radius:28px 28px 0 0;
+  z-index:101;
+  padding: 14px 20px calc(26px + var(--safe-bottom));
+  max-height:84vh;
+  display:flex;flex-direction:column;
+  transition:transform .34s cubic-bezier(.2,.85,.2,1);
+  box-shadow:0 -12px 36px rgba(42,33,24,.22);
+}
+/* 顶部一条装订孔 + 左右胶带 */
+.sheet::before{
+  content:"";position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  width:80px;height:2px;border-radius:2px;
+  background:repeating-linear-gradient(90deg,
+    var(--divider) 0 6px, transparent 6px 12px);
+}
+.sheet::after{
+  content:"";position:absolute;top:-6px;left:18%;
+  width:54px;height:14px;border-radius:2px;
+  background:repeating-linear-gradient(135deg,var(--amber) 0 5px, rgba(201,138,46,.72) 5px 9px);
+  transform:rotate(-5deg);opacity:.88;
+  box-shadow:0 2px 4px rgba(42,33,24,.12);
+}
+.sheet.show{transform:translateX(-50%) translateY(0);}
+.sheet-handle{
+  width:44px;height:5px;border-radius:999px;
+  background:var(--divider);
+  margin:0 auto 16px;flex-shrink:0;
+}
+.sheet-title{
+  font-family:"Noto Serif SC",serif;
+  font-weight:700;font-size:19px;text-align:center;
+  margin-bottom:18px;flex-shrink:0;
+  letter-spacing:.5px;
+  background:linear-gradient(transparent 70%, rgba(228,87,46,.18) 70% 86%, transparent 86%);
+  display:inline-block;padding:0 8px;margin-left:auto;margin-right:auto;
+  align-self:center;
+}
+.sheet-body{
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  flex:1;
+}
+
+/* 类型选择列表（像一页贴纸本） */
+.type-pick{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+  padding-bottom:10px;
+}
+.type-pick .item{
+  background:#fff;
+  border:2px solid transparent;
+  border-radius:var(--radius-md);
+  padding:18px 8px 14px;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  transition:all .16s cubic-bezier(.2,.8,.2,1);
+  box-shadow:0 1px 0 rgba(42,33,24,.04), 0 0 0 1px var(--divider);
+  position:relative;
+}
+.type-pick .item::before{
+  content:"";position:absolute;top:-4px;left:50%;transform:translateX(-50%) rotate(-4deg);
+  width:22px;height:5px;border-radius:2px;
+  background:rgba(228,87,46,.45);opacity:0;transition:opacity .16s;
+}
+.type-pick .item:active{transform:scale(.95);border-color:var(--primary-soft);}
+.type-pick .item:active::before{opacity:1;}
+.type-pick .item .emo{font-size:32px;line-height:1;}
+.type-pick .item .nm{font-size:13px;font-weight:600;}
+.type-pick .item .df{
+  font-size:11px;color:var(--ink-soft);
+  background:rgba(42,33,24,.04);padding:1px 7px;border-radius:4px;
+}
+
+/* 数量确认（大数字步进器） */
+.count-check{
+  display:flex;flex-direction:column;align-items:center;
+  padding:14px 0 4px;
+}
+.count-check .type-info{
+  display:flex;align-items:center;gap:12px;margin-bottom:22px;
+  background:#fff;padding:10px 16px;border-radius:16px;
+  box-shadow:0 1px 0 rgba(42,33,24,.04), 0 0 0 1px var(--divider);
+}
+.count-check .type-info .emo{font-size:36px;}
+.count-check .type-info .nm{font-family:"Noto Serif SC",serif;font-weight:700;font-size:20px;letter-spacing:.5px;}
+.count-display{
+  display:flex;align-items:center;gap:22px;
+  margin-bottom:22px;
+}
+.step-btn{
+  width:56px;height:56px;border-radius:50%;
+  background:#fff;
+  font-size:30px;font-weight:900;color:var(--ink);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--shadow-sm), 0 0 0 1px var(--divider);
+  transition:all .12s cubic-bezier(.2,.8,.2,1);
+}
+.step-btn:active{transform:scale(.92);background:var(--primary-soft);color:var(--primary);}
+.step-btn:disabled{opacity:.35;}
+.count-input{
+  width:150px;height:80px;border-radius:20px;
+  background:#fff;
+  text-align:center;
+  font-family:"Noto Serif SC",serif;font-weight:900;font-size:44px;
+  color:var(--primary);
+  box-shadow:var(--shadow-sm), 0 0 0 1px var(--divider);
+}
+.count-check .unit{color:var(--ink-soft);font-size:14px;margin-bottom:18px;letter-spacing:1px;}
+.restore-default{
+  color:var(--accent);font-size:13px;
+  padding:8px 16px;margin-bottom:18px;
+  border-radius:999px;
+  background:rgba(15,110,86,.08);
+  font-weight:500;
+  transition:all .15s;
+}
+.restore-default:active{background:rgba(15,110,86,.18);transform:scale(.97);}
+.primary-btn{
+  width:100%;padding:17px;border-radius:999px;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,.22) 0%, transparent 50%),
+    linear-gradient(145deg, #F08563 0%, var(--primary) 55%, #B53A16 100%);
+  color:#FFFBF2;
+  font-size:16px;font-weight:700;
+  box-shadow:var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,.2);
+  transition:transform .1s;
+  letter-spacing:1px;
+}
+.primary-btn:active{transform:scale(.98);}
+.primary-btn:disabled{opacity:.4;}
+.secondary-btn{
+  width:100%;padding:14px;border-radius:999px;
+  background:rgba(42,33,24,.04);color:var(--ink-soft);
+  font-size:14px;margin-top:10px;font-weight:500;
+  transition:all .15s;
+}
+.secondary-btn:active{background:rgba(42,33,24,.08);transform:scale(.98);}
+
+/* 类型编辑弹层 */
+.field{margin-bottom:18px;}
+.field label{
+  display:block;font-size:13px;font-weight:500;color:var(--ink-soft);
+  margin-bottom:8px;
+}
+.input-wrap{
+  background:var(--bg);
+  border:2px solid var(--divider);
+  border-radius:var(--radius-md);
+  padding:12px 14px;
+  transition:border-color .15s;
+}
+.input-wrap:focus-within{border-color:var(--accent);}
+.text-input{
+  width:100%;font-size:15px;
+}
+.num-input{
+  width:100%;font-size:15px;
+}
+.emoji-grid{
+  display:grid;grid-template-columns:repeat(8,1fr);gap:6px;
+  padding:4px;
+}
+.emoji-grid button{
+  aspect-ratio:1/1;border-radius:10px;font-size:20px;
+  background:var(--bg);
+  transition:all .12s;
+}
+.emoji-grid button.on{background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent) inset;}
+.emoji-grid button:active{transform:scale(.9);}
+.custom-emoji{
+  margin-top:10px;
+  display:flex;gap:8px;
+}
+.custom-emoji .input-wrap{flex:1;padding:8px 12px;}
+.custom-emoji button{
+  background:var(--accent);color:#FFFDF8;padding:0 14px;border-radius:10px;font-size:13px;
+}
+
+/* 二次确认框 */
+.confirm-box{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.92);
+  width:calc(100% - 48px);max-width:350px;
+  background:var(--bg-card);
+  border-radius:var(--radius-lg);
+  z-index:102;display:none;
+  padding:24px 22px 18px;
+  box-shadow:var(--shadow-md);
+  transition:transform .2s ease, opacity .2s ease;
+  opacity:0;
+}
+.confirm-box.show{display:block;transform:translate(-50%,-50%) scale(1);opacity:1;}
+.confirm-box h3{
+  font-family:"Noto Serif SC",serif;font-weight:700;font-size:17px;margin-bottom:8px;text-align:center;
+}
+.confirm-box p{color:var(--ink-soft);font-size:13px;text-align:center;line-height:1.6;margin-bottom:20px;}
+.confirm-actions{display:flex;gap:10px;}
+.confirm-actions button{
+  flex:1;padding:12px 0;border-radius:999px;font-size:14px;font-weight:600;
+}
+.confirm-actions .cancel{background:var(--bg);color:var(--ink-soft);}
+.confirm-actions .ok{background:var(--warning);color:#FFFDF8;}
+
+/* ============ Toast ============ */
+.toast-wrap{
+  position:fixed;top:24px;left:50%;transform:translateX(-50%);
+  z-index:200;display:flex;flex-direction:column;gap:8px;
+  pointer-events:none;width:calc(100% - 48px);max-width:380px;align-items:center;
+}
+.toast{
+  background:rgba(33,28,21,.92);color:#FFFDF8;
+  padding:10px 18px;border-radius:999px;
+  font-size:13px;
+  box-shadow:var(--shadow-md);
+  animation:toastIn .25s ease, toastOut .25s ease 1.7s forwards;
+  max-width:100%;
+  text-align:center;
+}
+.toast.success{background:var(--accent);}
+.toast.warn{background:var(--warning);}
+@keyframes toastIn{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
+@keyframes toastOut{to{opacity:0;transform:translateY(-10px);}}
+
+/* ============ 辅助工具类 ============ */
+.mt-4{margin-top:16px;}
+.hide{display:none !important;}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ============ 打卡页（首页） ============ -->
+  <section class="page active" id="page-home">
+    <div class="top-bar">
+      <div>
+        <div class="date-main font-serif" id="home-date">8月31日 星期一</div>
+        <div class="date-sub" id="home-greeting">早上好，开启今日运动吧 ☀️</div>
+      </div>
+      <div class="badge" id="home-badge">今日 0 项</div>
+    </div>
+
+    <div class="hero">
+      <button class="big-checkin" id="btn-checkin" aria-label="打卡">
+        <span class="target">🎯</span>
+        <span class="label font-serif">打 卡</span>
+        <span class="hint">QUICK CHECK-IN</span>
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>📊 今日汇总</span>
+        <span class="more" id="home-summary-more">保持节奏 🔥</span>
+      </div>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="num font-serif" id="sum-total">0</div>
+          <div class="lbl">总次数（次）</div>
+        </div>
+        <div class="summary-item green">
+          <div class="num font-serif" id="sum-types">0</div>
+          <div class="lbl">运动项目</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>📝 今日记录</span>
+        <span class="more" id="home-records-count">共 0 笔</span>
+      </div>
+      <div id="home-records"></div>
+    </div>
+  </section>
+
+  <!-- ============ 统计页 ============ -->
+  <section class="page" id="page-stats">
+    <div class="top-bar">
+      <div>
+        <div class="date-main font-serif">数据统计</div>
+        <div class="date-sub">坚持就是胜利 🌱</div>
+      </div>
+    </div>
+
+    <div class="segment" id="stats-segment">
+      <button data-range="week" class="on">本周</button>
+      <button data-range="month">本月</button>
+      <button data-range="year">今年</button>
+    </div>
+    <div class="range-label" id="stats-range-label">本周 · 8月25日 至 8月31日</div>
+
+    <div class="card">
+      <div id="stats-bars"></div>
+    </div>
+
+    <div class="total-card">
+      <div class="lbl">
+        <span class="t">合计</span>
+        <span id="stats-total-sub">时间范围内的打卡总量</span>
+      </div>
+      <div class="num font-serif"><span id="stats-total-num">0</span><span class="u">次</span></div>
+    </div>
+  </section>
+
+  <!-- ============ 类型管理页 ============ -->
+  <section class="page" id="page-types">
+    <div class="top-bar">
+      <div>
+        <div class="date-main font-serif">运动类型</div>
+        <div class="date-sub">自定义你的运动清单</div>
+      </div>
+      <div class="badge" id="types-count-badge" style="background:var(--primary);">0 项</div>
+    </div>
+
+    <div class="card">
+      <div id="types-list"></div>
+    </div>
+
+    <button class="fab" id="btn-add-type">
+      <span class="plus">＋</span><span>新增运动类型</span>
+    </button>
+  </section>
+
+  <!-- ============ 底部导航 ============ -->
+  <nav class="nav">
+    <button class="nav-item active" data-tab="home">
+      <span class="ico">🏠</span><span>打卡</span>
+    </button>
+    <button class="nav-item" data-tab="stats">
+      <span class="ico">📈</span><span>统计</span>
+    </button>
+    <button class="nav-item" data-tab="types">
+      <span class="ico">⚙️</span><span>类型</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ============ 弹层组件 ============ -->
+<!-- 通用遮罩 -->
+<div class="mask" id="mask"></div>
+
+<!-- 打卡选择弹层 -->
+<div class="sheet" id="sheet-checkin" role="dialog" aria-modal="true">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title font-serif">选择运动类型</div>
+  <div class="sheet-body">
+    <div class="type-pick" id="checkin-type-pick"></div>
+  </div>
+  <button class="secondary-btn" data-close="sheet-checkin">取消</button>
+</div>
+
+<!-- 数量确认弹层 -->
+<div class="sheet" id="sheet-count" role="dialog" aria-modal="true">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title font-serif">确认打卡数量</div>
+  <div class="sheet-body">
+    <div class="count-check">
+      <div class="type-info">
+        <span class="emo" id="cc-emoji">💪</span>
+        <span class="nm font-serif" id="cc-name">深蹲</span>
+      </div>
+      <div class="count-display">
+        <button class="step-btn" id="cc-minus">−</button>
+        <input class="count-input" type="number" id="cc-input" value="20" min="1">
+        <button class="step-btn" id="cc-plus">＋</button>
+      </div>
+      <div class="unit">单位：次</div>
+      <button class="restore-default" id="cc-restore">↺ 恢复默认数量</button>
+    </div>
+  </div>
+  <button class="primary-btn" id="cc-confirm">✓ 完成打卡</button>
+  <button class="secondary-btn" data-close="sheet-count">返回选择类型</button>
+</div>
+
+<!-- 类型新增/编辑弹层 -->
+<div class="sheet" id="sheet-type-edit" role="dialog" aria-modal="true">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title font-serif" id="te-title">新增运动类型</div>
+  <div class="sheet-body">
+    <div class="field">
+      <label>运动名称</label>
+      <div class="input-wrap">
+        <input class="text-input" type="text" id="te-name" placeholder="如：深蹲、平板支撑" maxlength="10">
+      </div>
+    </div>
+    <div class="field">
+      <label>默认数量（次）</label>
+      <div class="input-wrap">
+        <input class="num-input" type="number" id="te-def" placeholder="如：20" min="1" max="99999">
+      </div>
+    </div>
+    <div class="field">
+      <label>图标表情</label>
+      <div class="emoji-grid" id="te-emoji-grid"></div>
+      <div class="custom-emoji">
+        <div class="input-wrap">
+          <input class="text-input" type="text" id="te-emoji-custom" placeholder="自定义 emoji 或字符" maxlength="4">
+        </div>
+        <button id="te-emoji-custom-add">使用</button>
+      </div>
+    </div>
+  </div>
+  <button class="primary-btn" id="te-confirm">✓ 保存</button>
+  <button class="secondary-btn" data-close="sheet-type-edit">取消</button>
+</div>
+
+<!-- 二次确认弹框 -->
+<div class="confirm-box" id="confirm-box" role="dialog" aria-modal="true">
+  <h3 class="font-serif" id="confirm-title">确认操作？</h3>
+  <p id="confirm-desc">此操作不可撤销</p>
+  <div class="confirm-actions">
+    <button class="cancel" id="confirm-cancel">取消</button>
+    <button class="ok" id="confirm-ok">确认</button>
+  </div>
+</div>
+
+<!-- ============ Toast ============ -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+/* ===============================================================
+ *  运动打卡工具 · 核心逻辑
+ *  单文件 Vanilla JS，模块：Store / DateUtils / Stats / UI / Init
+ * =============================================================== */
+(function(){
+  'use strict';
+
+  /* ============ 常量 ============ */
+  const STORAGE_KEY = 'workout-checkin-v1';
+  const CURRENT_VERSION = 1;
+  const DEFAULT_EMOJIS = ['💪','🧘','🪢','🏃','🚴','🏊','🤸','🚶','🏋️','🧗','⛹️','🏸','🥊','⚽','🏀','🎾','🧎','🧱','🏌️','🤾','🥋','🛼','🩰','🎳','🏓','🧩','🌞','🔥','⭐','🍀','❤️','⚡'];
+  const PRESET_TYPES = [
+    {name:'深蹲',  def:20,   emoji:'💪'},
+    {name:'八段锦',def:2,    emoji:'🧘'},
+    {name:'跳绳',  def:2000, emoji:'🪢'}
+  ];
+
+  /* =============================================================
+   *                    模块一：DateUtils
+   * ============================================================= */
+  const DateUtils = {
+    pad(n){return n<10?'0'+n:''+n;},
+    /** 返回本地时区的今日日期字符串 YYYY-MM-DD */
+    todayStr(d){
+      const x = d || new Date();
+      return `${x.getFullYear()}-${this.pad(x.getMonth()+1)}-${this.pad(x.getDate())}`;
+    },
+    /** 返回今日友好格式：8月31日 星期一 */
+    todayFriendly(){
+      const d = new Date();
+      const weeks = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+      return `${d.getMonth()+1}月${d.getDate()}日 ${weeks[d.getDay()]}`;
+    },
+    /** 根据时间段返回问候语 */
+    greetingByHour(){
+      const h = new Date().getHours();
+      if(h<6)   return {txt:'夜深了，运动也要适度哦 🌙',emo:'🌙'};
+      if(h<11)  return {txt:'早上好，开启今日运动吧 ☀️',emo:'☀️'};
+      if(h<14)  return {txt:'中午好，抽 5 分钟动一动吧 🍱',emo:'🍱'};
+      if(h<18)  return {txt:'下午好，活力满满继续冲 ☕',emo:'☕'};
+      if(h<22)  return {txt:'晚上好，结束一天前打个卡吧 🌆',emo:'🌆'};
+      return       {txt:'夜深了，早点休息哦 🌙',emo:'🌙'};
+    },
+    /** 取本周（周一 0 点）起至今日（含）范围 [startStr, endStr] */
+    getWeekRange(){
+      const today = new Date(); today.setHours(0,0,0,0);
+      const dow = today.getDay() || 7; // 周日=0 → 7
+      const mon = new Date(today);
+      mon.setDate(today.getDate() - dow + 1);
+      return [this.todayStr(mon), this.todayStr(today)];
+    },
+    getMonthRange(){
+      const today = new Date(); today.setHours(0,0,0,0);
+      const first = new Date(today.getFullYear(), today.getMonth(), 1);
+      return [this.todayStr(first), this.todayStr(today)];
+    },
+    getYearRange(){
+      const today = new Date(); today.setHours(0,0,0,0);
+      const first = new Date(today.getFullYear(), 0, 1);
+      return [this.todayStr(first), this.todayStr(today)];
+    },
+    /** 判断 dateStr (YYYY-MM-DD) 是否在 [start,end] 闭区间内 */
+    isInRange(dateStr, start, end){
+      return dateStr >= start && dateStr <= end;
+    },
+    /** 友好显示范围标签 */
+    rangeLabel(range, start, end){
+      const fmt = s => {
+        const [y,m,d] = s.split('-');
+        return `${parseInt(m,10)}月${parseInt(d,10)}日`;
+      };
+      const rangeNameMap = {week:'本周',month:'本月',year:'今年'};
+      return `${rangeNameMap[range]} · ${fmt(start)} 至 ${fmt(end)}`;
+    },
+    /** 时间戳 → HH:mm（用于今日记录） */
+    timeOfDay(ts){
+      const d = new Date(ts);
+      return `${this.pad(d.getHours())}:${this.pad(d.getMinutes())}`;
+    },
+    /** 返回某日的 dateStr 偏移 N 天的字符串 */
+    addDaysStr(dateStr, n){
+      const [y,m,d] = dateStr.split('-').map(Number);
+      const x = new Date(y, m-1, d);
+      x.setDate(x.getDate() + n);
+      return this.todayStr(x);
+    },
+    /** 生成随机整数 [a,b] */
+    randInt(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+  };
+
+  /* =============================================================
+   *                    模块二：Store
+   * ============================================================= */
+  const Store = {
+    state:null,
+
+    /* 加载：若 localStorage 为空则生成初始示例数据 */
+    load(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(raw){
+          const obj = JSON.parse(raw);
+          if(obj && Array.isArray(obj.types) && Array.isArray(obj.records)){
+            this.state = obj;
+            return;
+          }
+        }
+      }catch(e){ console.warn('load state failed',e); }
+      this.state = this.generateInitialState();
+      this.persist();
+    },
+    persist(){
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state)); }
+      catch(e){ console.warn('persist failed',e); showToast('保存失败：存储异常','warn'); }
+    },
+
+    /* 生成包含跨周/月/年记录的初始示例数据 */
+    generateInitialState(){
+      const today = DateUtils.todayStr();
+      // 类型（带 id）
+      const types = PRESET_TYPES.map((t,i)=>({
+        id:'t'+(i+1), name:t.name, def:t.def, emoji:t.emoji, deleted:false
+      }));
+      const records = [];
+      let rIdx = 1;
+      const addRec = (typeIdx, count, dateStr, ts)=>{
+        records.push({
+          id:'r'+(rIdx++),
+          typeId:types[typeIdx].id,
+          count,
+          date:dateStr,
+          createdAt: ts || (new Date(dateStr+'T09:00:00').getTime())
+        });
+      };
+
+      // ====== 今天 ======
+      const todayMorning = new Date(); todayMorning.setHours(8,15,0,0);
+      const todayNoon = new Date(); todayNoon.setHours(12,40,0,0);
+      addRec(0, 20, today, todayMorning.getTime());     // 深蹲 20
+      addRec(1, 2,  today, todayNoon.getTime());        // 八段锦 2
+
+      // ====== 昨天 ======
+      const y = DateUtils.addDaysStr(today,-1);
+      addRec(2, 2000, y, new Date(y+'T20:30:00').getTime()); // 跳绳 2000
+      addRec(0, 20,   y, new Date(y+'T08:00:00').getTime());
+
+      // ====== 本周前几天（周一到前天，按dow生成） ======
+      const [weekStart] = DateUtils.getWeekRange();
+      // 遍历本周一 到 大前天
+      let cursor = weekStart;
+      const beforeYesterday = DateUtils.addDaysStr(today,-2);
+      while(cursor < today){
+        if(cursor >= weekStart && cursor <= beforeYesterday){
+          // 每天 1-2 条
+          const n = DateUtils.randInt(1,2);
+          for(let k=0;k<n;k++){
+            const tIdx = DateUtils.randInt(0,2);
+            const t = types[tIdx];
+            const c = t.def + DateUtils.randInt(-5, 10);
+            addRec(tIdx, Math.max(1,c), cursor, new Date(cursor+`T${DateUtils.pad(8+k*5)}:00:00`).getTime());
+          }
+        }
+        cursor = DateUtils.addDaysStr(cursor,1);
+      }
+
+      // ====== 本月前 2 周（共 10 天，每天 1-2 条） ======
+      const [monthStart] = DateUtils.getMonthRange();
+      let ms = monthStart;
+      const weekStartObj = new Date(weekStart);
+      const daysInThisMonthSoFar = 0;
+      while(ms < weekStart){ // 本月且早于本周
+        // 每 ~2 天抽一天填数据，避免过密
+        if(Math.random() < 0.55){
+          const n = DateUtils.randInt(1,2);
+          for(let k=0;k<n;k++){
+            const tIdx = DateUtils.randInt(0,2);
+            const t = types[tIdx];
+            addRec(tIdx, Math.max(1, t.def + DateUtils.randInt(-10, 15)), ms,
+              new Date(ms+'T19:30:00').getTime());
+          }
+        }
+        ms = DateUtils.addDaysStr(ms,1);
+        if((new Date(ms) - new Date(monthStart)) > 40*86400000) break; // safety
+      }
+
+      // ====== 今年前 7 个月（每月 2-3 条） ======
+      const yearNum = new Date(today).getFullYear();
+      const curMonth = new Date(today).getMonth(); // 0-based
+      for(let m=0; m<curMonth; m++){ // 已过去的每个月
+        const cnt = DateUtils.randInt(2,3);
+        for(let k=0;k<cnt;k++){
+          const day = DateUtils.randInt(3, 26);
+          const ds = `${yearNum}-${DateUtils.pad(m+1)}-${DateUtils.pad(day)}`;
+          const tIdx = DateUtils.randInt(0,2);
+          const t = types[tIdx];
+          addRec(tIdx, Math.max(1, t.def + DateUtils.randInt(-5, 15)), ds,
+            new Date(ds+'T20:00:00').getTime());
+        }
+      }
+
+      return { version:CURRENT_VERSION, types, records };
+    },
+
+    /* -------- 操作 -------- */
+    addRecord(typeId, count){
+      const now = Date.now();
+      const rec = {
+        id:'r'+now,
+        typeId,
+        count: Math.max(1, parseInt(count,10)||1),
+        date:DateUtils.todayStr(),
+        createdAt:now
+      };
+      this.state.records.push(rec);
+      this.persist();
+      return rec;
+    },
+    deleteRecord(recordId){
+      this.state.records = this.state.records.filter(r=>r.id!==recordId);
+      this.persist();
+    },
+    upsertType(data){
+      // data: {id?, name, def, emoji}
+      const now = Date.now();
+      if(data.id){
+        const t = this.state.types.find(x=>x.id===data.id);
+        if(t){
+          t.name = data.name;
+          t.def  = Math.max(1, parseInt(data.def,10)||1);
+          t.emoji= data.emoji || t.emoji;
+        }
+      }else{
+        this.state.types.push({
+          id:'t'+now,
+          name:data.name,
+          def:Math.max(1, parseInt(data.def,10)||1),
+          emoji:data.emoji||'🏃',
+          deleted:false
+        });
+      }
+      this.persist();
+    },
+    softDeleteType(typeId){
+      const t = this.state.types.find(x=>x.id===typeId);
+      if(t) t.deleted = true;
+      this.persist();
+    },
+    getActiveTypes(){
+      return this.state.types.filter(t=>!t.deleted);
+    },
+    getAllTypes(){
+      return this.state.types;
+    },
+    findType(typeId){
+      return this.state.types.find(t=>t.id===typeId) || null;
+    },
+    todayRecords(){
+      const t = DateUtils.todayStr();
+      return this.state.records
+        .filter(r=>r.date===t)
+        .sort((a,b)=>b.createdAt-a.createdAt);
+    }
+  };
+
+  /* =============================================================
+   *                    模块三：Stats
+   * ============================================================= */
+  const Stats = {
+    /** 返回 {items:[{typeId,name,emoji,total,isDeleted}], grandTotal, maxTotal} */
+    compute(range){
+      let start, end;
+      if(range==='week')  [start,end] = DateUtils.getWeekRange();
+      if(range==='month') [start,end] = DateUtils.getMonthRange();
+      if(range==='year')  [start,end] = DateUtils.getYearRange();
+
+      const recordsInRange = Store.state.records.filter(r=>DateUtils.isInRange(r.date,start,end));
+
+      // 按 typeId 聚合
+      const map = new Map();
+      for(const rec of recordsInRange){
+        map.set(rec.typeId, (map.get(rec.typeId)||0) + rec.count);
+      }
+      const items = [];
+      let grandTotal = 0, maxTotal = 0;
+      for(const [typeId, total] of map.entries()){
+        const t = Store.findType(typeId);
+        const isDeleted = !t || t.deleted;
+        const name = isDeleted
+          ? (t ? t.name : '未知项目')
+          : (t ? t.name : '未知项目');
+        const emoji = t ? t.emoji : '❓';
+        items.push({typeId, name, emoji, total, isDeleted});
+        grandTotal += total;
+        if(total > maxTotal) maxTotal = total;
+      }
+      // 按 total 降序
+      items.sort((a,b)=>b.total-a.total);
+      return {start,end,items,grandTotal,maxTotal};
+    }
+  };
+
+  /* =============================================================
+   *                    模块四：UI 渲染 + 交互
+   * ============================================================= */
+
+  /* ---------- 路由（底部 Tab） ---------- */
+  let currentTab = 'home';
+  function switchTab(tab){
+    currentTab = tab;
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    const target = document.getElementById('page-'+tab);
+    if(target) target.classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n=>{
+      n.classList.toggle('active', n.dataset.tab===tab);
+    });
+    if(tab==='home') renderHome();
+    if(tab==='stats') renderStats();
+    if(tab==='types') renderTypes();
+  }
+
+  /* ---------- 打卡页渲染 ---------- */
+  function renderHome(){
+    // 日期
+    document.getElementById('home-date').textContent = DateUtils.todayFriendly();
+    // 问候
+    const g = DateUtils.greetingByHour();
+    document.getElementById('home-greeting').textContent = g.txt;
+
+    const todays = Store.todayRecords();
+    // 徽章：今日项目数（typeId 去重）
+    const uniqueTypes = new Set(todays.map(r=>r.typeId)).size;
+    document.getElementById('home-badge').textContent = `今日 ${uniqueTypes} 项`;
+
+    // 汇总：总次数
+    const total = todays.reduce((s,r)=>s+r.count,0);
+    document.getElementById('sum-total').textContent = total;
+    document.getElementById('sum-types').textContent = uniqueTypes;
+    document.getElementById('home-summary-more').textContent =
+      todays.length === 0 ? '今天还没打卡，来开始吧 🌱' :
+      total >= 1000 ? '运动量拉满！太酷了 🔥' :
+      uniqueTypes >= 3 ? '项目丰富，保持住 👊' : '保持节奏 🔥';
+    document.getElementById('home-records-count').textContent = `共 ${todays.length} 笔`;
+
+    // 今日记录列表
+    const box = document.getElementById('home-records');
+    if(todays.length===0){
+      box.innerHTML = `
+        <div class="empty">
+          <span class="emo">🌱</span>
+          <div class="txt">${Delight.pickEmptyHome()}</div>
+        </div>`;
+      return;
+    }
+    box.innerHTML = todays.map(r=>{
+      const t = Store.findType(r.typeId);
+      const isDel = !t || t.deleted;
+      const name = t ? t.name : '已删除项目';
+      const emoji = t ? t.emoji : '❓';
+      return `
+        <div class="record-row">
+          <div class="left">
+            <div class="emoji">${emoji}</div>
+            <div>
+              <div class="name">
+                ${name}
+                ${isDel?'<span style="font-size:10px;color:var(--ink-soft);background:var(--divider);padding:1px 6px;border-radius:4px;margin-left:4px;">已删除</span>':''}
+              </div>
+              <div class="time">${DateUtils.timeOfDay(r.createdAt)} 打卡</div>
+            </div>
+          </div>
+          <div class="right">
+            <span class="count font-serif">${r.count}</span>
+            <span class="unit">次</span>
+            <button class="del" data-del-record="${r.id}" title="删除这条记录" aria-label="删除">🗑</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  /* ---------- 统计页渲染 ---------- */
+  let statsRange = 'week';
+  function renderStats(){
+    const {start,end,items,grandTotal,maxTotal} = Stats.compute(statsRange);
+    // 范围标签
+    document.getElementById('stats-range-label').textContent = DateUtils.rangeLabel(statsRange, start, end);
+    // segment 按钮状态
+    document.querySelectorAll('#stats-segment button').forEach(b=>{
+      b.classList.toggle('on', b.dataset.range===statsRange);
+    });
+    // 条形图（五色循环：c0 墨绿、c1 朱红、c2 琥珀、c3 藏青、c4 玫瑰）
+    const box = document.getElementById('stats-bars');
+    if(items.length===0){
+      box.innerHTML = `
+        <div class="empty">
+          <span class="emo">📭</span>
+          <div class="txt">${Delight.pickEmptyStats()}</div>
+        </div>`;
+    }else{
+      box.innerHTML = items.map((it, idx)=>{
+        const colorCls = 'c'+(idx % 5);
+        const w = maxTotal>0 ? Math.max(8, Math.round(it.total/maxTotal*100)) : 0;
+        return `
+          <div class="bar-row">
+            <div class="bar-head ${colorCls}">
+              <div class="left">
+                <span class="emo">${it.emoji}</span>
+                <span class="nm">${it.name}</span>
+                ${it.isDeleted?'<span class="tag-deleted">已删除</span>':''}
+              </div>
+              <div class="val font-serif">${it.total}<span class="u">次</span></div>
+            </div>
+            <div class="bar-track"><div class="bar-fill ${colorCls}" style="width:0%" data-w="${w}%"></div></div>
+          </div>`;
+      }).join('');
+      // 动画：条形宽度从 0 过渡到目标值
+      requestAnimationFrame(()=>{
+        box.querySelectorAll('.bar-fill').forEach(el=>{
+          el.style.width = el.dataset.w;
+        });
+      });
+    }
+    // 总计
+    document.getElementById('stats-total-num').textContent = grandTotal;
+  }
+
+  /* ---------- 类型管理页渲染 ---------- */
+  function renderTypes(){
+    const types = Store.getActiveTypes();
+    document.getElementById('types-count-badge').textContent = `${types.length} 项`;
+    const box = document.getElementById('types-list');
+    if(types.length===0){
+      box.innerHTML = `
+        <div class="empty">
+          <span class="emo">🏃</span>
+          <div class="txt">还没有添加运动类型<br/>点击下方新增按钮开始吧</div>
+        </div>`;
+      return;
+    }
+    box.innerHTML = types.map(t=>`
+      <div class="type-row">
+        <div class="left">
+          <div class="emo">${t.emoji}</div>
+          <div class="info">
+            <div class="nm">${t.name}</div>
+            <div class="def">默认 ${t.def} 次</div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="act edit" data-edit-type="${t.id}" title="编辑" aria-label="编辑">✎</button>
+          <button class="act del"  data-del-type="${t.id}"  title="删除" aria-label="删除">🗑</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  /* =============================================================
+   *                 模块五：弹层（Sheet & Modal）
+   * ============================================================= */
+  const mask = document.getElementById('mask');
+  function openSheet(id){
+    mask.classList.add('show');
+    document.getElementById(id).classList.add('show');
+    document.body.style.overflow='hidden';
+  }
+  function closeSheet(id){
+    if(id){
+      document.getElementById(id).classList.remove('show');
+    }else{
+      document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('show'));
+    }
+    // 若所有 sheet 都关了，隐藏 mask
+    const anyOpen = Array.from(document.querySelectorAll('.sheet')).some(s=>s.classList.contains('show'));
+    const anyConfirm = document.getElementById('confirm-box').classList.contains('show');
+    if(!anyOpen && !anyConfirm){
+      mask.classList.remove('show');
+      document.body.style.overflow='';
+    }
+  }
+  function closeAll(){
+    document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('show'));
+    document.getElementById('confirm-box').classList.remove('show');
+    mask.classList.remove('show');
+    document.body.style.overflow='';
+  }
+  mask.addEventListener('click', closeAll);
+
+  /* ------ 打卡流程：选择类型 → 数量确认 ------ */
+  let checkinCurrentTypeId = null;
+  let checkinCurrentDefault = 1;
+
+  function openCheckinTypeSheet(){
+    const types = Store.getActiveTypes();
+    if(types.length===0){
+      showToast('请先在「类型」页添加运动项目', 'warn');
+      setTimeout(()=>switchTab('types'), 900);
+      return;
+    }
+    const box = document.getElementById('checkin-type-pick');
+    box.innerHTML = types.map(t=>`
+      <button class="item" data-type-id="${t.id}">
+        <span class="emo">${t.emoji}</span>
+        <span class="nm">${t.name}</span>
+        <span class="df">默认 ${t.def} 次</span>
+      </button>
+    `).join('');
+    openSheet('sheet-checkin');
+  }
+
+  function openCountSheet(typeId){
+    const t = Store.findType(typeId);
+    if(!t) return;
+    checkinCurrentTypeId = typeId;
+    checkinCurrentDefault = t.def;
+    document.getElementById('cc-emoji').textContent = t.emoji;
+    document.getElementById('cc-name').textContent  = t.name;
+    document.getElementById('cc-input').value = t.def;
+    // 先关掉选择弹层，再开确认弹层
+    document.getElementById('sheet-checkin').classList.remove('show');
+    setTimeout(()=>openSheet('sheet-count'), 120);
+  }
+
+  /* ------ 新增/编辑类型弹层 ------ */
+  let editingTypeId = null;    // null 表示新增
+  let pickedEmoji = '💪';
+  function openTypeEditor(typeIdOrNull){
+    editingTypeId = typeIdOrNull || null;
+    const title = document.getElementById('te-title');
+    const nameInput = document.getElementById('te-name');
+    const defInput = document.getElementById('te-def');
+    const customInput = document.getElementById('te-emoji-custom');
+    customInput.value = '';
+
+    if(editingTypeId){
+      const t = Store.findType(editingTypeId);
+      if(!t) return;
+      title.textContent = '编辑运动类型';
+      nameInput.value = t.name;
+      defInput.value  = t.def;
+      pickedEmoji = t.emoji;
+    }else{
+      title.textContent = '新增运动类型';
+      nameInput.value = '';
+      defInput.value  = '10';
+      pickedEmoji = DEFAULT_EMOJIS[0];
+    }
+    renderEmojiGrid();
+    openSheet('sheet-type-edit');
+  }
+  function renderEmojiGrid(){
+    const grid = document.getElementById('te-emoji-grid');
+    grid.innerHTML = DEFAULT_EMOJIS.map(e=>`
+      <button type="button" data-emoji="${e}" class="${e===pickedEmoji?'on':''}" aria-label="选择图标 ${e}">${e}</button>
+    `).join('');
+  }
+
+  /* ------ 二次确认弹框 ------ */
+  let confirmCb = null;
+  function openConfirm(title, desc, onOk, okText='确认', okClass=''){
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-desc').textContent  = desc;
+    const okBtn = document.getElementById('confirm-ok');
+    okBtn.textContent = okText;
+    okBtn.className = 'ok ' + okClass;
+    confirmCb = onOk;
+    mask.classList.add('show');
+    document.getElementById('confirm-box').classList.add('show');
+  }
+  function closeConfirm(){
+    document.getElementById('confirm-box').classList.remove('show');
+    const anySheet = Array.from(document.querySelectorAll('.sheet')).some(s=>s.classList.contains('show'));
+    if(!anySheet){
+      mask.classList.remove('show');
+      document.body.style.overflow='';
+    }
+    confirmCb = null;
+  }
+
+  /* =============================================================
+   *                  模块五点五：Delight（小确幸）
+   * ============================================================= */
+  const Delight = {
+    // 打卡成功的鼓励文案（随机挑选，保持惊喜感，不重复上一条）
+    cheerPool : [
+      '太棒了！每一次坚持都算数 🌟',
+      '打卡成功！继续保持这种节奏 💪',
+      '好样的！身体正在悄悄变强 🔥',
+      'Nice！今天也超努力的 👏',
+      '记录下这一笔，又是元气满满的一天 ✨',
+      '干得漂亮！离目标更近一步啦 🎯',
+      '哇哦！这就是自律的样子 🌱',
+      '今日份运动已达成，奖励自己一下吧 🎁',
+      '你做到了！身体会感谢你的 🙌',
+      '打卡成功！今天的你闪闪发光 ✨',
+      '稳！坚持的人运气都不会太差 🍀',
+      '又前进一步，真的超厉害 🏆'
+    ],
+    lastCheerIdx : -1,
+    pickCheer(){
+      if(this.cheerPool.length <= 1) return this.cheerPool[0];
+      let i;
+      do { i = Math.floor(Math.random()*this.cheerPool.length); }
+      while(i === this.lastCheerIdx);
+      this.lastCheerIdx = i;
+      return this.cheerPool[i];
+    },
+
+    // 首页今日记录空状态
+    emptyHomePool : [
+      '今天还没有记录哦<br/>点击上方大按钮，开启第一笔打卡吧 🎯',
+      '空白的今日手账本<br/>等你写下运动的第一笔 ✍️',
+      '还没开始呢！现在动一动也不晚 ⏰',
+      '新的一天，新的开始<br/>来打今天的第一个卡吧 🌱'
+    ],
+    pickEmptyHome(){ return this.emptyHomePool[Math.floor(Math.random()*this.emptyHomePool.length)]; },
+
+    // 统计页空状态
+    emptyStatsPool : [
+      '这段时间还没有打卡记录<br/>去打卡页写下新的一页吧 📒',
+      '空空如也的一页<br/>从今天开始留下你的运动印记吧 🖋',
+      '暂无数据！每一次开始都值得鼓励 🌞',
+      '翻开这一页还是空白的<br/>不如就现在，开始第一次打卡 🚀'
+    ],
+    pickEmptyStats(){ return this.emptyStatsPool[Math.floor(Math.random()*this.emptyStatsPool.length)]; },
+
+    // 彩带粒子（从屏幕顶部上方落下，水平随机分布）
+    confettiColors : ['#E4572E','#0F6E56','#C98A2E','#4A5899','#C9546A','#F0C75E','#1A8F71'],
+    fireConfetti(pieceCount=42){
+      let layer = document.querySelector('.confetti-layer');
+      if(!layer){
+        layer = document.createElement('div');
+        layer.className = 'confetti-layer';
+        document.body.appendChild(layer);
+      }
+      const frag = document.createDocumentFragment();
+      const colors = this.confettiColors;
+      const appLeft = document.querySelector('.app').getBoundingClientRect();
+      const L = Math.max(0, appLeft.left);
+      const W = Math.min(window.innerWidth, appLeft.right || window.innerWidth) - L;
+      for(let i=0;i<pieceCount;i++){
+        const s = document.createElement('span');
+        s.className = 'confetti-piece';
+        const leftPx = (i/pieceCount) * W + (Math.random()*20-10) + L;
+        const dx = (Math.random()*180-90) + 'px';
+        const rot = (Math.random()*900-450) + 'deg';
+        const delay = (Math.random()*180).toFixed(0) + 'ms';
+        const dur = (1200 + Math.random()*700).toFixed(0) + 'ms';
+        s.style.cssText = `
+          left:${leftPx}px;
+          background:${colors[i % colors.length]};
+          width:${6 + (i%3)*3}px;
+          height:${8 + (i%4)*3}px;
+          border-radius:${i%2? '50%' : '3px'};
+          --dx:${dx};
+          --rot:${rot};
+          animation-delay:${delay};
+          animation-duration:${dur};
+        `;
+        frag.appendChild(s);
+      }
+      layer.appendChild(frag);
+      // 2s 后清理
+      setTimeout(()=>{
+        while(layer && layer.firstChild) layer.removeChild(layer.firstChild);
+      }, 2300);
+    }
+  };
+
+  /* =============================================================
+   *                       模块六：Toast
+   * ============================================================= */
+  function showToast(msg, kind=''){
+    const wrap = document.getElementById('toast-wrap');
+    const el = document.createElement('div');
+    el.className = 'toast ' + kind;
+    el.textContent = msg;
+    wrap.appendChild(el);
+    setTimeout(()=>el.remove(), 2300);
+  }
+
+  /* =============================================================
+   *                 模块七：全局事件绑定
+   * ============================================================= */
+  function bindEvents(){
+    // 底部导航
+    document.querySelectorAll('.nav-item').forEach(n=>{
+      n.addEventListener('click', ()=>switchTab(n.dataset.tab));
+    });
+
+    // 大圆形打卡按钮
+    document.getElementById('btn-checkin').addEventListener('click', openCheckinTypeSheet);
+
+    // 打卡选择类型
+    document.getElementById('checkin-type-pick').addEventListener('click', e=>{
+      const btn = e.target.closest('.item');
+      if(btn) openCountSheet(btn.dataset.typeId);
+    });
+
+    // 数量确认弹层：加减 + 恢复默认 + 完成
+    const ccInput = document.getElementById('cc-input');
+    document.getElementById('cc-minus').addEventListener('click', ()=>{
+      const v = Math.max(1, (parseInt(ccInput.value,10)||1)-1);
+      ccInput.value = v;
+    });
+    document.getElementById('cc-plus').addEventListener('click', ()=>{
+      const v = Math.min(99999, (parseInt(ccInput.value,10)||0)+1);
+      ccInput.value = v;
+    });
+    ccInput.addEventListener('input', ()=>{
+      let v = parseInt(ccInput.value,10);
+      if(isNaN(v) || v<1) v = 1;
+      if(v>99999) v = 99999;
+    });
+    document.getElementById('cc-restore').addEventListener('click', ()=>{
+      ccInput.value = checkinCurrentDefault;
+      showToast('已恢复默认数量 '+checkinCurrentDefault+' 次');
+    });
+    document.getElementById('cc-confirm').addEventListener('click', ()=>{
+      const count = Math.max(1, parseInt(ccInput.value,10)||1);
+      if(!checkinCurrentTypeId){ showToast('请先选择运动类型','warn'); return; }
+      Store.addRecord(checkinCurrentTypeId, count);
+      const t = Store.findType(checkinCurrentTypeId);
+      closeSheet('sheet-count');
+      // 庆祝三件套：大按钮弹跳 + 顶部彩带 + 双 Toast（鼓励语 + 详情）
+      const bigBtn = document.getElementById('btn-checkin');
+      bigBtn.classList.remove('celebrate');
+      void bigBtn.offsetWidth; // 重启动画
+      bigBtn.classList.add('celebrate');
+      setTimeout(()=>bigBtn.classList.remove('celebrate'), 650);
+      Delight.fireConfetti(50);
+      showToast(Delight.pickCheer(), 'success');
+      setTimeout(()=>{
+        showToast(`${t? t.emoji+' '+t.name : '打卡'} ${count} 次 已记录`);
+        renderHome();
+      }, 260);
+    });
+
+    // 所有 data-close 按钮
+    document.querySelectorAll('[data-close]').forEach(b=>{
+      b.addEventListener('click', ()=>closeSheet(b.dataset.close));
+    });
+
+    // 统计页 segment 切换
+    document.querySelectorAll('#stats-segment button').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        statsRange = b.dataset.range;
+        renderStats();
+      });
+    });
+
+    // 类型管理：今日记录删除、类型编辑/类型删除（事件委托）
+    document.getElementById('page-home').addEventListener('click', e=>{
+      const delBtn = e.target.closest('[data-del-record]');
+      if(delBtn){
+        const recId = delBtn.dataset.delRecord;
+        const rec = Store.state.records.find(x=>x.id===recId);
+        if(!rec) return;
+        const t = Store.findType(rec.typeId);
+        openConfirm(
+          '删除这条记录？',
+          `将移除「${t? t.name:'已删除项目'} ${rec.count} 次」的今日打卡记录，删除后不可恢复。`,
+          ()=>{
+            Store.deleteRecord(recId);
+            closeConfirm();
+            renderHome();
+            showToast('已删除该条记录');
+          },
+          '删除'
+        );
+      }
+    });
+
+    document.getElementById('page-types').addEventListener('click', e=>{
+      const edBtn = e.target.closest('[data-edit-type]');
+      const dlBtn = e.target.closest('[data-del-type]');
+      if(edBtn){ openTypeEditor(edBtn.dataset.editType); }
+      if(dlBtn){
+        const t = Store.findType(dlBtn.dataset.delType);
+        if(!t) return;
+        openConfirm(
+          `删除运动类型「${t.name}」？`,
+          '删除后它将从类型列表中移除，但历史打卡记录仍会保留在统计中，并标注为「已删除项目」。',
+          ()=>{
+            Store.softDeleteType(t.id);
+            closeConfirm();
+            renderTypes();
+            showToast(`已删除「${t.name}」`);
+          },
+          '删除'
+        );
+      }
+    });
+
+    // 新增类型按钮
+    document.getElementById('btn-add-type').addEventListener('click', ()=>openTypeEditor(null));
+
+    // 类型编辑弹层：emoji 选择、自定义、保存
+    document.getElementById('te-emoji-grid').addEventListener('click', e=>{
+      const b = e.target.closest('button[data-emoji]');
+      if(b){
+        pickedEmoji = b.dataset.emoji;
+        renderEmojiGrid();
+      }
+    });
+    document.getElementById('te-emoji-custom-add').addEventListener('click', ()=>{
+      const v = document.getElementById('te-emoji-custom').value.trim();
+      if(!v){ showToast('请输入自定义表情','warn'); return; }
+      pickedEmoji = v.slice(0,4);
+      // 若不在预设列表中，渲染时无 on 高亮也可以；但为了显示一致我们加在最前并高亮
+      renderEmojiGrid();
+      // 给用户反馈
+      showToast(`已使用自定义图标：${pickedEmoji}`);
+    });
+    document.getElementById('te-confirm').addEventListener('click', ()=>{
+      const name = document.getElementById('te-name').value.trim();
+      const defRaw = document.getElementById('te-def').value;
+      const def = Math.max(1, parseInt(defRaw,10)||0);
+      if(!name){ showToast('请输入运动名称','warn'); return; }
+      if(name.length>10){ showToast('名称过长（≤ 10字）','warn'); return; }
+      if(!def || def<=0){ showToast('请填写有效的默认数量','warn'); return; }
+      if(def>99999){ showToast('默认数量过大','warn'); return; }
+      Store.upsertType({
+        id: editingTypeId || undefined,
+        name,
+        def,
+        emoji: pickedEmoji
+      });
+      closeSheet('sheet-type-edit');
+      setTimeout(()=>{
+        showToast(editingTypeId? '已更新运动类型' : '已添加新运动类型', 'success');
+        renderTypes();
+        // 如果在首页，徽章与类型选择也需同步，刷新 home
+        if(currentTab==='home') renderHome();
+      },150);
+    });
+
+    // 二次确认弹窗：取消/确认
+    document.getElementById('confirm-cancel').addEventListener('click', closeConfirm);
+    document.getElementById('confirm-ok').addEventListener('click', ()=>{
+      if(typeof confirmCb === 'function'){
+        const cb = confirmCb;
+        // 先不关闭，让 cb 自己处理（这样 cb 可以链式调用 closeConfirm）
+        cb();
+      }else{
+        closeConfirm();
+      }
+    });
+
+    // 键盘 ESC 关闭所有弹层
+    document.addEventListener('keydown', e=>{
+      if(e.key==='Escape') closeAll();
+    });
+  }
+
+  /* =============================================================
+   *                       模块八：初始化
+   * ============================================================= */
+  function init(){
+    Store.load();
+    bindEvents();
+    renderHome();
+
+    // PWA 注册（file:// 或 http://localhost 以外的 https 环境才注册）
+    if('serviceWorker' in navigator && location.protocol !== 'file:'){
+      window.addEventListener('load', ()=>{
+        navigator.serviceWorker.register('sw.js').catch(err=>{
+          // 失败不影响主功能
+        });
+      });
+    }
+  }
+
+  // DOM 就绪执行
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  }else{
+    init();
+  }
+
+})();
+</script>
+</body>
+</html>
