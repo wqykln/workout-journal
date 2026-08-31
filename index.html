@@ -565,6 +565,43 @@ ul,ol{list-style:none;}
 .fab:active{transform:scale(.97);box-shadow:0 2px 8px rgba(228,87,46,.2);}
 .fab .plus{font-size:18px;line-height:1;font-weight:900;}
 
+/* 版本号 + 功能说明 */
+.about-section{
+  display:flex;align-items:center;justify-content:center;gap:16px;
+  margin:0 auto 28px;
+}
+.btn-about{
+  background:none;border:none;
+  color:var(--ink-faint);font-size:13px;font-weight:500;
+  font-family:inherit;cursor:pointer;
+  padding:6px 14px;border-radius:999px;
+  transition:color .2s, background .2s;
+}
+.btn-about:active{color:var(--primary);background:rgba(228,87,46,.06);}
+.version-label{
+  font-size:12px;font-weight:600;color:var(--ink-faint);
+  letter-spacing:1px;
+  padding:3px 10px;border-radius:999px;
+  background:rgba(42,33,24,.06);
+}
+
+/* 功能说明列表 */
+.about-list{padding:4px 0;}
+.about-item{
+  display:flex;align-items:flex-start;gap:14px;
+  padding:14px 0;
+  border-bottom:1px dashed var(--divider);
+}
+.about-item:last-child{border-bottom:none;}
+.about-ico{
+  width:38px;height:38px;border-radius:12px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;
+  background:linear-gradient(135deg, rgba(228,87,46,.08), rgba(15,110,86,.06));
+}
+.about-name{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:3px;}
+.about-desc{font-size:13px;line-height:1.5;color:var(--ink-soft);}
+
 /* ============ 弹层 Sheet（手账便签本风格） ============ */
 .mask{
   position:fixed;inset:0;
@@ -867,7 +904,12 @@ ul,ol{list-style:none;}
       <span class="plus">＋</span><span>新增运动类型</span>
     </button>
 
-    <button class="btn-danger-ghost" id="btn-clear-all" style="margin:14px auto 28px;display:block;background:none;border:1.5px solid rgba(228,87,46,.35);color:var(--primary);padding:10px 22px;border-radius:999px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s;">🗑 清空所有打卡数据</button>
+    <button class="btn-danger-ghost" id="btn-clear-all" style="margin:14px auto 14px;display:block;background:none;border:1.5px solid rgba(228,87,46,.35);color:var(--primary);padding:10px 22px;border-radius:999px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .2s;">🗑 清空所有打卡数据</button>
+
+    <div class="about-section">
+      <button class="btn-about" id="btn-about">📋 功能说明</button>
+      <span class="version-label">V1.0</span>
+    </div>
   </section>
 
   <!-- ============ 底部导航 ============ -->
@@ -957,6 +999,58 @@ ul,ol{list-style:none;}
   <div class="confirm-actions">
     <button class="cancel" id="confirm-cancel">取消</button>
     <button class="ok" id="confirm-ok">确认</button>
+  </div>
+</div>
+
+<!-- 功能说明弹层 -->
+<div class="sheet" id="sheet-about" role="dialog" aria-modal="true">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title font-serif">运动打卡 · 功能说明</div>
+  <div class="sheet-body">
+    <div class="about-list">
+      <div class="about-item">
+        <span class="about-ico">🎯</span>
+        <div class="about-text">
+          <div class="about-name">快速打卡</div>
+          <div class="about-desc">点击大印章按钮，选择运动类型，确认数量即可完成打卡，支持自定义数量。</div>
+        </div>
+      </div>
+      <div class="about-item">
+        <span class="about-ico">📋</span>
+        <div class="about-text">
+          <div class="about-name">今日记录</div>
+          <div class="about-desc">首页实时展示当天所有打卡记录，可逐条删除。</div>
+        </div>
+      </div>
+      <div class="about-item">
+        <span class="about-ico">📊</span>
+        <div class="about-text">
+          <div class="about-name">统计概览</div>
+          <div class="about-desc">按周/月/年查看各运动类型的累计次数，一目了然。</div>
+        </div>
+      </div>
+      <div class="about-item">
+        <span class="about-ico">⚙️</span>
+        <div class="about-text">
+          <div class="about-name">类型管理</div>
+          <div class="about-desc">新增、编辑、删除运动类型，设置默认数量和图标。删除类型后历史记录保留标注。</div>
+        </div>
+      </div>
+      <div class="about-item">
+        <span class="about-ico">💾</span>
+        <div class="about-text">
+          <div class="about-name">本地存储</div>
+          <div class="about-desc">所有数据保存在手机本地，无需注册登录，隐私安全。</div>
+        </div>
+      </div>
+      <div class="about-item">
+        <span class="about-ico">📱</span>
+        <div class="about-text">
+          <div class="about-name">离线使用</div>
+          <div class="about-desc">添加到手机主屏幕后，无网络也能打开使用，像原生 App 一样全屏体验。</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1673,6 +1767,9 @@ ul,ol{list-style:none;}
 
     // 新增类型按钮
     document.getElementById('btn-add-type').addEventListener('click', ()=>openTypeEditor(null));
+
+    // 功能说明
+    document.getElementById('btn-about').addEventListener('click', ()=>openSheet('sheet-about'));
 
     // 清空所有打卡数据
     document.getElementById('btn-clear-all').addEventListener('click', ()=>{
