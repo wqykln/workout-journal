@@ -113,30 +113,24 @@ ul,ol{list-style:none;}
   width:calc(100% - 24px);max-width:406px;
   height: calc(var(--nav-h) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
-  /* 像一张小贴纸：顶部和左右有胶带边 */
   background:var(--bg-card);
   border:1px solid var(--divider);
   border-radius:22px 22px 18px 18px;
   margin-bottom:10px;
-  display:grid;grid-template-columns:repeat(3,1fr);
+  display:grid;grid-template-columns:repeat(2,1fr);
   z-index:50;
   box-shadow:var(--shadow-md);
 }
-/* 顶部两条胶带：朱红 + 墨绿小方块 */
-.nav::before, .nav::after{
+/* 顶部一条居中胶带 */
+.nav::before{
   content:"";position:absolute;top:-8px;
-  width:46px;height:14px;border-radius:3px;
+  left:50%;transform:translateX(-50%) rotate(-2deg);
+  width:48px;height:14px;border-radius:3px;
   opacity:.78;
+  background:repeating-linear-gradient(135deg,var(--primary) 0 6px, rgba(255,255,255,.15) 6px 10px);
   box-shadow:0 2px 4px rgba(42,33,24,.12);
 }
-.nav::before{
-  left:28%;transform:translateX(-50%) rotate(-4deg);
-  background:repeating-linear-gradient(135deg,var(--primary) 0 6px, rgba(255,255,255,.15) 6px 10px);
-}
-.nav::after{
-  right:28%;transform:translateX(50%) rotate(3deg);
-  background:repeating-linear-gradient(135deg,var(--accent) 0 6px, rgba(255,255,255,.15) 6px 10px);
-}
+.nav::after{content:none;}
 .nav-item{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:3px;font-size:12px;color:var(--ink-faint);
@@ -554,36 +548,22 @@ ul,ol{list-style:none;}
 .type-row.c3 .emo{background:linear-gradient(135deg,#EEF0F8,#D7DCEE);}
 .type-row.c4 .emo{background:linear-gradient(135deg,#FCEEF1,#F5D7DE);}
 
+/* 新增运动类型按钮（内联，简洁胶囊形） */
 .fab{
-  position:fixed;
-  bottom: calc(var(--nav-h) + var(--safe-bottom) + 20px);
-  left:50%;transform:translateX(-50%);
-  width:calc(100% - 56px);max-width:374px;
-  /* 朱红盖印风格：多层渐变 + 胶带装饰 */
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255,255,255,.22) 0%, transparent 50%),
-    linear-gradient(145deg, #F08563 0%, var(--primary) 55%, #B53A16 100%);
-  color:#FFFBF2;
-  padding:16px;border-radius:999px;
-  font-size:16px;font-weight:700;
-  box-shadow:var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,.2);
   display:flex;align-items:center;justify-content:center;gap:8px;
-  transition:transform .12s;
-  z-index:30;
-  letter-spacing:.5px;
+  margin:18px auto 0;
+  width:fit-content;
+  padding:13px 32px;
+  background:var(--primary);
+  color:#fff;border:none;
+  border-radius:999px;
+  font-size:14px;font-weight:700;font-family:inherit;
+  cursor:pointer;
+  box-shadow:0 4px 14px rgba(228,87,46,.25);
+  transition:transform .15s, box-shadow .15s;
 }
-.fab::before, .fab::after{
-  content:"";position:absolute;top:-5px;
-  width:36px;height:10px;border-radius:2px;
-  background:repeating-linear-gradient(45deg,
-    rgba(201,138,46,.75) 0 4px, rgba(201,138,46,.56) 4px 7px);
-  transform:rotate(-6deg);
-  opacity:.85;
-}
-.fab::before{left:24px;}
-.fab::after{right:24px;transform:rotate(6deg);background:repeating-linear-gradient(45deg,rgba(74,88,153,.62) 0 4px, rgba(74,88,153,.48) 4px 7px);}
-.fab:active{transform:translateX(-50%) scale(.97);}
-.fab .plus{font-size:20px;line-height:1;font-weight:900;}
+.fab:active{transform:scale(.97);box-shadow:0 2px 8px rgba(228,87,46,.2);}
+.fab .plus{font-size:18px;line-height:1;font-weight:900;}
 
 /* ============ 弹层 Sheet（手账便签本风格） ============ */
 .mask{
