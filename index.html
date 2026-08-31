@@ -75,7 +75,7 @@ ul,ol{list-style:none;}
   font-feature-settings:"tnum";
 }
 /* 所有统计数字强制 tabular-nums 等宽对齐 */
-.num, .count, .summary-item .num, .total-card .num, .bar-head .val{
+.num, .count, .total-card .num, .bar-head .val{
   font-variant-numeric:tabular-nums;
   font-feature-settings:"tnum";
   letter-spacing:-.01em;
@@ -190,7 +190,7 @@ ul,ol{list-style:none;}
 
 /* ============ 大圆形打卡按钮（呼吸 + 立体质感） ============ */
 .hero{
-  margin:26px 0 22px;
+  margin:30px 0 28px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   position:relative;
 }
@@ -310,41 +310,6 @@ ul,ol{list-style:none;}
   font-family:"Noto Sans SC",sans-serif;
   background:rgba(42,33,24,.03);padding:3px 10px;border-radius:999px;
 }
-
-/* ============ 今日汇总卡（彩色贴纸两格） ============ */
-.summary-grid{
-  display:grid;grid-template-columns:1fr 1fr;gap:14px;
-}
-.summary-item{
-  background:linear-gradient(160deg, #FFF8E8 0%, #FFECDA 100%);
-  border-radius:var(--radius-md);
-  padding:18px 12px 16px;
-  border:1px solid rgba(228,87,46,.12);
-  text-align:center;
-  position:relative;
-  overflow:hidden;
-}
-.summary-item::before{
-  content:"";position:absolute;top:-30px;right:-30px;
-  width:80px;height:80px;border-radius:50%;
-  background:radial-gradient(circle, rgba(228,87,46,.14) 0%, transparent 70%);
-}
-.summary-item .num{
-  font-family:"Noto Serif SC",serif;
-  font-size:34px;font-weight:900;line-height:1;
-  color:var(--primary);
-  text-shadow:0 1px 0 rgba(255,255,255,.6);
-  position:relative;
-}
-.summary-item .lbl{color:var(--ink-soft);font-size:12px;margin-top:8px;position:relative;}
-.summary-item.green{
-  background:linear-gradient(160deg, #EFF8F3 0%, #D7EBDE 100%);
-  border-color:rgba(15,110,86,.12);
-}
-.summary-item.green::before{
-  background:radial-gradient(circle, rgba(15,110,86,.14) 0%, transparent 70%);
-}
-.summary-item.green .num{color:var(--accent);}
 
 /* ============ 记录列表（贴纸每行独立） ============ */
 .record-row{
@@ -468,10 +433,6 @@ ul,ol{list-style:none;}
 .bar-head .left{display:flex;align-items:center;gap:10px;min-width:0;}
 .bar-head .emo{font-size:20px;}
 .bar-head .nm{font-size:14px;font-weight:600;}
-.bar-head .tag-deleted{
-  font-size:10px;background:rgba(122,111,96,.15);color:var(--ink-soft);
-  padding:2px 7px;border-radius:4px;margin-left:6px;font-weight:500;
-}
 .bar-head .val{
   font-family:"Noto Serif SC",serif;font-weight:900;font-size:19px;
   display:flex;align-items:baseline;gap:2px;
@@ -870,25 +831,7 @@ ul,ol{list-style:none;}
 
     <div class="card">
       <div class="card-title">
-        <span>📊 今日汇总</span>
-        <span class="more" id="home-summary-more">保持节奏 🔥</span>
-      </div>
-      <div class="summary-grid">
-        <div class="summary-item">
-          <div class="num font-serif" id="sum-total">0</div>
-          <div class="lbl">总次数（次）</div>
-        </div>
-        <div class="summary-item green">
-          <div class="num font-serif" id="sum-types">0</div>
-          <div class="lbl">运动项目</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">
         <span>📝 今日记录</span>
-        <span class="more" id="home-records-count">共 0 笔</span>
       </div>
       <div id="home-records"></div>
     </div>
@@ -1298,7 +1241,11 @@ ul,ol{list-style:none;}
     todayRecords(){
       const t = DateUtils.todayStr();
       return this.state.records
-        .filter(r=>r.date===t)
+        .filter(r=>{
+          if(r.date!==t) return false;
+          const type = this.findType(r.typeId);
+          return type && !type.deleted;
+        })
         .sort((a,b)=>b.createdAt-a.createdAt);
     }
   };
@@ -1314,7 +1261,11 @@ ul,ol{list-style:none;}
       if(range==='month') [start,end] = DateUtils.getMonthRange();
       if(range==='year')  [start,end] = DateUtils.getYearRange();
 
-      const recordsInRange = Store.state.records.filter(r=>DateUtils.isInRange(r.date,start,end));
+      const recordsInRange = Store.state.records.filter(r=>{
+        if(!DateUtils.isInRange(r.date,start,end)) return false;
+        const t = Store.findType(r.typeId);
+        return t && !t.deleted; // 已删除类型的记录不计入统计
+      });
 
       // 按 typeId 聚合
       const map = new Map();
@@ -1325,12 +1276,9 @@ ul,ol{list-style:none;}
       let grandTotal = 0, maxTotal = 0;
       for(const [typeId, total] of map.entries()){
         const t = Store.findType(typeId);
-        const isDeleted = !t || t.deleted;
-        const name = isDeleted
-          ? (t ? t.name : '未知项目')
-          : (t ? t.name : '未知项目');
+        const name = t ? t.name : '未知项目';
         const emoji = t ? t.emoji : '❓';
-        items.push({typeId, name, emoji, total, isDeleted});
+        items.push({typeId, name, emoji, total});
         grandTotal += total;
         if(total > maxTotal) maxTotal = total;
       }
@@ -1372,16 +1320,6 @@ ul,ol{list-style:none;}
     const uniqueTypes = new Set(todays.map(r=>r.typeId)).size;
     document.getElementById('home-badge').textContent = `今日 ${uniqueTypes} 项`;
 
-    // 汇总：总次数
-    const total = todays.reduce((s,r)=>s+r.count,0);
-    document.getElementById('sum-total').textContent = total;
-    document.getElementById('sum-types').textContent = uniqueTypes;
-    document.getElementById('home-summary-more').textContent =
-      todays.length === 0 ? '今天还没打卡，来开始吧 🌱' :
-      total >= 1000 ? '运动量拉满！太酷了 🔥' :
-      uniqueTypes >= 3 ? '项目丰富，保持住 👊' : '保持节奏 🔥';
-    document.getElementById('home-records-count').textContent = `共 ${todays.length} 笔`;
-
     // 今日记录列表
     const box = document.getElementById('home-records');
     if(todays.length===0){
@@ -1394,7 +1332,6 @@ ul,ol{list-style:none;}
     }
     box.innerHTML = todays.map(r=>{
       const t = Store.findType(r.typeId);
-      const isDel = !t || t.deleted;
       const name = t ? t.name : '已删除项目';
       const emoji = t ? t.emoji : '❓';
       return `
@@ -1402,10 +1339,7 @@ ul,ol{list-style:none;}
           <div class="left">
             <div class="emoji">${emoji}</div>
             <div>
-              <div class="name">
-                ${name}
-                ${isDel?'<span style="font-size:10px;color:var(--ink-soft);background:var(--divider);padding:1px 6px;border-radius:4px;margin-left:4px;">已删除</span>':''}
-              </div>
+              <div class="name">${name}</div>
               <div class="time">${DateUtils.timeOfDay(r.createdAt)} 打卡</div>
             </div>
           </div>
@@ -1446,7 +1380,6 @@ ul,ol{list-style:none;}
               <div class="left">
                 <span class="emo">${it.emoji}</span>
                 <span class="nm">${it.name}</span>
-                ${it.isDeleted?'<span class="tag-deleted">已删除</span>':''}
               </div>
               <div class="val font-serif">${it.total}<span class="u">次</span></div>
             </div>
@@ -1819,11 +1752,13 @@ ul,ol{list-style:none;}
         if(!t) return;
         openConfirm(
           `删除运动类型「${t.name}」？`,
-          '删除后它将从类型列表中移除，但历史打卡记录仍会保留在统计中，并标注为「已删除项目」。',
+          '删除后该类型将从列表中移除，相关打卡记录也将从统计和今日记录中消失，此操作不可恢复。',
           ()=>{
             Store.softDeleteType(t.id);
             closeConfirm();
             renderTypes();
+            renderStats();
+            renderHome();
             showToast(`已删除「${t.name}」`);
           },
           '删除'
