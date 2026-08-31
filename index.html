@@ -1820,8 +1820,10 @@ ul,ol{list-style:none;}
     // PWA 注册（file:// 或 http://localhost 以外的 https 环境才注册）
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
       window.addEventListener('load', ()=>{
-        navigator.serviceWorker.register('sw.js').catch(err=>{
-          // 失败不影响主功能
+        navigator.serviceWorker.register('sw.js', {scope:'./'}).then(reg=>{
+          console.log('[SW] registered:', reg.scope, 'v7');
+        }).catch(err=>{
+          console.warn('[SW] register failed:', err.message);
         });
       });
     }
