@@ -216,6 +216,32 @@ ul,ol{list-style:none;}
   transform:rotate(6deg);
   font-family:"Noto Serif SC",serif;
 }
+/* 安装提示条 */
+.install-banner{
+  display:flex;align-items:center;gap:10px;
+  margin:-12px 14px 16px;
+  padding:11px 14px;
+  background:linear-gradient(135deg,#FFF8ED 0%,#FCEEE4 100%);
+  border:1px solid rgba(228,87,46,.18);
+  border-radius:14px;
+  box-shadow:0 4px 14px rgba(228,87,46,.12);
+  animation:slideDown .35s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes slideDown{
+  from{opacity:0;transform:translateY(-8px);}
+  to{opacity:1;transform:translateY(0);}
+}
+.install-ico{font-size:18px;flex-shrink:0;}
+.install-text{flex:1;font-size:12.5px;color:#6B4E3A;font-weight:500;line-height:1.4;}
+.install-btn{
+  background:var(--primary);color:#fff;border:none;
+  padding:7px 15px;border-radius:999px;
+  font-size:12px;font-weight:600;font-family:inherit;
+  cursor:pointer;flex-shrink:0;
+  box-shadow:0 2px 6px rgba(228,87,46,.3);
+  transition:transform .15s;
+}
+.install-btn:active{transform:scale(.95);}
 .big-checkin{
   width:188px;height:188px;border-radius:50%;
   position:relative;
@@ -858,6 +884,13 @@ ul,ol{list-style:none;}
         <span class="label font-serif">打 卡</span>
         <span class="hint">QUICK CHECK-IN</span>
       </button>
+    </div>
+
+    <!-- PWA 安装提示（仅在 Chrome 支持 beforeinstallprompt 时显示） -->
+    <div class="install-banner" id="install-banner" hidden>
+      <span class="install-ico">📲</span>
+      <span class="install-text">添加到桌面，像 App 一样离线打卡</span>
+      <button class="install-btn" id="btn-install">立即安装</button>
     </div>
 
     <div class="card">
@@ -1816,6 +1849,38 @@ ul,ol{list-style:none;}
     Store.load();
     bindEvents();
     renderHome();
+
+    // ============ PWA 安装提示 ============
+    let deferredPrompt = null;
+    const banner = document.getElementById('install-banner');
+    const btnInstall = document.getElementById('btn-install');
+    // 监听安装就绪事件
+    window.addEventListener('beforeinstallprompt', (e) => {
+      console.log('[PWA] beforeinstallprompt fired');
+      e.preventDefault();
+      deferredPrompt = e;
+      banner.hidden = false; // 显示提示条
+    });
+    // 用户已安装后隐藏提示
+    window.addEventListener('appinstalled', () => {
+      console.log('[PWA] app installed');
+      deferredPrompt = null;
+      banner.hidden = true;
+    });
+    // 点击"立即安装"按钮
+    if(btnInstall){
+      btnInstall.addEventListener('click', async () => {
+        if(!deferredPrompt){
+          showToast('您的浏览器暂不支持一键安装，请手动添加到主屏幕','warn');
+          return;
+        }
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log('[PWA] user choice:', outcome);
+        deferredPrompt = null;
+        if(outcome === 'accepted') banner.hidden = true;
+      });
+    }
 
     // PWA 注册（file:// 或 http://localhost 以外的 https 环境才注册）
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
