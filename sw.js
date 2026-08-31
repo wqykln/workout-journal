@@ -4,13 +4,13 @@
  *   - 首页 index.html 用 Stale-While-Revalidate（先返回缓存秒开，后台拉新）
  *   - 其余静态资源用 Cache-First（字体、manifest、图标）
  * ================================================================ */
-const CACHE_NAME = 'workout-checkin-v7';
+const CACHE_NAME = 'workout-checkin-v8';
 const PRECACHE_URLS = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './icons/icon-192.jpg',
-  './icons/icon-512.jpg'
+  './icons/icon-192.png',
+  './icons/icon-512.png'
 ];
 
 // 安装：预缓存核心资源 + 跳过等待
