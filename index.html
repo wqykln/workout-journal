@@ -194,6 +194,19 @@ ul,ol{list-style:none;}
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   position:relative;
 }
+/* 按钮背后一圈柔和光晕（用 box-shadow 双层实现） */
+.hero::before{
+  content:"";position:absolute;top:50%;left:50%;
+  width:220px;height:220px;border-radius:50%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle, rgba(228,87,46,.18) 0%, transparent 70%);
+  animation:pulseGlow 3.2s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes pulseGlow{
+  0%,100%{opacity:.5;transform:translate(-50%,-50%) scale(1);}
+  50%{opacity:.9;transform:translate(-50%,-50%) scale(1.08);}
+}
 /* 大按钮底下一张「打卡」纸条装饰 */
 .hero::after{
   content:"CHECK-IN";position:absolute;
@@ -205,6 +218,7 @@ ul,ol{list-style:none;}
 }
 .big-checkin{
   width:188px;height:188px;border-radius:50%;
+  position:relative;
   /* 朱红多层渐变，模拟盖印章的质感 */
   background:
     radial-gradient(circle at 32% 28%, rgba(255,255,255,.35) 0%, transparent 38%),
