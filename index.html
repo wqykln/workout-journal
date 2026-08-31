@@ -207,15 +207,7 @@ ul,ol{list-style:none;}
   0%,100%{opacity:.5;transform:translate(-50%,-50%) scale(1);}
   50%{opacity:.9;transform:translate(-50%,-50%) scale(1.08);}
 }
-/* 大按钮底下一张「打卡」纸条装饰 */
-.hero::after{
-  content:"CHECK-IN";position:absolute;
-  bottom:-2px;right:calc(50% - 98px);
-  font-size:10px;letter-spacing:2.5px;font-weight:700;
-  color:rgba(228,87,46,.55);
-  transform:rotate(6deg);
-  font-family:"Noto Serif SC",serif;
-}
+/* 打卡按钮装饰已移除 */
 .big-checkin{
   width:188px;height:188px;border-radius:50%;
   position:relative;
@@ -457,40 +449,37 @@ ul,ol{list-style:none;}
 }
 .bar-head .left{display:flex;align-items:center;gap:10px;min-width:0;}
 .bar-head .emo{font-size:20px;}
-.bar-head .nm{font-size:14px;font-weight:600;}
-.bar-head .val{
-  font-family:"Noto Serif SC",serif;font-weight:900;font-size:19px;
+/* ============ 统计列表（简洁列表，无柱状图） ============ */
+.stats-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 10px;margin:0 -6px;
+  border-radius:14px;
+  transition:background .2s;
+}
+.stats-row + .stats-row{margin-top:2px;}
+.stats-row .left{display:flex;align-items:center;gap:10px;}
+.stats-row .emo{
+  width:34px;height:34px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;flex-shrink:0;
+}
+.stats-row .nm{font-size:14px;font-weight:600;color:var(--ink);}
+.stats-row .val{
+  font-family:"Noto Serif SC",serif;font-weight:900;font-size:18px;
   display:flex;align-items:baseline;gap:2px;
 }
-.bar-head .val .u{font-size:12px;color:var(--ink-soft);font-family:"Noto Sans SC";font-weight:400;}
-.bar-track{
-  height:14px;background:linear-gradient(180deg, rgba(42,33,24,.06), rgba(42,33,24,.03));
-  border-radius:999px;overflow:hidden;
-  box-shadow:inset 0 1px 2px rgba(42,33,24,.08);
-}
-.bar-fill{
-  height:100%;border-radius:999px;
-  transition:width .7s cubic-bezier(.2,.8,.2,1);
-  width:0;
-  position:relative;
-}
-/* 给 bar-fill 一个进度点（纸胶带高亮头） */
-.bar-fill::after{
-  content:"";position:absolute;right:2px;top:50%;transform:translateY(-50%);
-  width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.7);
-  box-shadow:0 0 0 1px rgba(255,255,255,.4);
-}
-/* 4 色循环，不同运动类型条形不一样的手账贴纸色（在 JS 中通过 nth-mod 设置 class 或直接 CSS var 注入） */
-.bar-fill.c0{background:linear-gradient(90deg, var(--accent) 0%, #1A8F71 100%);}
-.bar-head.c0 .val{color:var(--accent);}
-.bar-fill.c1{background:linear-gradient(90deg, var(--primary) 0%, #F08563 100%);}
-.bar-head.c1 .val{color:var(--primary);}
-.bar-fill.c2{background:linear-gradient(90deg, var(--amber) 0%, #E6B267 100%);}
-.bar-head.c2 .val{color:var(--amber);}
-.bar-fill.c3{background:linear-gradient(90deg, var(--indigo) 0%, #6E7CBA 100%);}
-.bar-head.c3 .val{color:var(--indigo);}
-.bar-fill.c4{background:linear-gradient(90deg, var(--rose) 0%, #DB8393 100%);}
-.bar-head.c4 .val{color:var(--rose);}
+.stats-row .val .u{font-size:11px;color:var(--ink-soft);font-family:"Noto Sans SC";font-weight:400;}
+/* 五色循环 emoji 背景 */
+.stats-row.c0 .emo{background:rgba(15,110,86,.14);}
+.stats-row.c0 .val{color:var(--accent);}
+.stats-row.c1 .emo{background:rgba(228,87,46,.14);}
+.stats-row.c1 .val{color:var(--primary);}
+.stats-row.c2 .emo{background:rgba(201,138,46,.14);}
+.stats-row.c2 .val{color:var(--amber);}
+.stats-row.c3 .emo{background:rgba(74,88,153,.14);}
+.stats-row.c3 .val{color:var(--indigo);}
+.stats-row.c4 .emo{background:rgba(201,90,118,.14);}
+.stats-row.c4 .val{color:var(--rose);}
 
 .total-card{
   margin-top:16px;
@@ -866,34 +855,19 @@ ul,ol{list-style:none;}
       </div>
       <div id="home-records"></div>
     </div>
-  </section>
 
-  <!-- ============ 统计页 ============ -->
-  <section class="page" id="page-stats">
-    <div class="top-bar">
-      <div>
-        <div class="date-main font-serif">数据统计</div>
-        <div class="date-sub">坚持就是胜利 🌱</div>
-      </div>
-    </div>
-
-    <div class="segment" id="stats-segment">
-      <button data-range="week" class="on">本周</button>
-      <button data-range="month">本月</button>
-      <button data-range="year">今年</button>
-    </div>
-    <div class="range-label" id="stats-range-label">本周 · 8月25日 至 8月31日</div>
-
+    <!-- 统计区块（融合进打卡页） -->
     <div class="card">
-      <div id="stats-bars"></div>
-    </div>
-
-    <div class="total-card">
-      <div class="lbl">
-        <span class="t">合计</span>
-        <span id="stats-total-sub">时间范围内的打卡总量</span>
+      <div class="card-title">
+        <span>📊 统计</span>
       </div>
-      <div class="num font-serif"><span id="stats-total-num">0</span><span class="u">次</span></div>
+      <div class="segment" id="stats-segment">
+        <button data-range="week" class="on">本周</button>
+        <button data-range="month">本月</button>
+        <button data-range="year">今年</button>
+      </div>
+      <div class="range-label" id="stats-range-label">本周</div>
+      <div id="stats-list"></div>
     </div>
   </section>
 
@@ -922,9 +896,6 @@ ul,ol{list-style:none;}
   <nav class="nav">
     <button class="nav-item active" data-tab="home">
       <span class="ico">🏠</span><span>打卡</span>
-    </button>
-    <button class="nav-item" data-tab="stats">
-      <span class="ico">📈</span><span>统计</span>
     </button>
     <button class="nav-item" data-tab="types">
       <span class="ico">⚙️</span><span>类型</span>
@@ -1263,8 +1234,7 @@ ul,ol{list-style:none;}
     document.querySelectorAll('.nav-item').forEach(n=>{
       n.classList.toggle('active', n.dataset.tab===tab);
     });
-    if(tab==='home') renderHome();
-    if(tab==='stats') renderStats();
+    if(tab==='home'){ renderHome(); renderStats(); }
     if(tab==='types') renderTypes();
   }
 
@@ -1314,18 +1284,20 @@ ul,ol{list-style:none;}
     }).join('');
   }
 
-  /* ---------- 统计页渲染 ---------- */
+  /* ---------- 统计渲染（融合在打卡页内） ---------- */
   let statsRange = 'week';
   function renderStats(){
     const {start,end,items,grandTotal,maxTotal} = Stats.compute(statsRange);
     // 范围标签
-    document.getElementById('stats-range-label').textContent = DateUtils.rangeLabel(statsRange, start, end);
+    const lbl = document.getElementById('stats-range-label');
+    if(lbl) lbl.textContent = DateUtils.rangeLabel(statsRange, start, end);
     // segment 按钮状态
     document.querySelectorAll('#stats-segment button').forEach(b=>{
       b.classList.toggle('on', b.dataset.range===statsRange);
     });
-    // 条形图（五色循环：c0 墨绿、c1 朱红、c2 琥珀、c3 藏青、c4 玫瑰）
-    const box = document.getElementById('stats-bars');
+    // 列表（五色循环：c0 墨绿、c1 朱红、c2 琥珀、c3 藏青、c4 玫瑰）
+    const box = document.getElementById('stats-list');
+    if(!box) return;
     if(items.length===0){
       box.innerHTML = `
         <div class="empty">
@@ -1335,28 +1307,16 @@ ul,ol{list-style:none;}
     }else{
       box.innerHTML = items.map((it, idx)=>{
         const colorCls = 'c'+(idx % 5);
-        const w = maxTotal>0 ? Math.max(8, Math.round(it.total/maxTotal*100)) : 0;
         return `
-          <div class="bar-row">
-            <div class="bar-head ${colorCls}">
-              <div class="left">
-                <span class="emo">${it.emoji}</span>
-                <span class="nm">${it.name}</span>
-              </div>
-              <div class="val font-serif">${it.total}<span class="u">次</span></div>
+          <div class="stats-row ${colorCls}">
+            <div class="left">
+              <span class="emo">${it.emoji}</span>
+              <span class="nm">${it.name}</span>
             </div>
-            <div class="bar-track"><div class="bar-fill ${colorCls}" style="width:0%" data-w="${w}%"></div></div>
+            <div class="val font-serif">${it.total}<span class="u">次</span></div>
           </div>`;
       }).join('');
-      // 动画：条形宽度从 0 过渡到目标值
-      requestAnimationFrame(()=>{
-        box.querySelectorAll('.bar-fill').forEach(el=>{
-          el.style.width = el.dataset.w;
-        });
-      });
     }
-    // 总计
-    document.getElementById('stats-total-num').textContent = grandTotal;
   }
 
   /* ---------- 类型管理页渲染 ---------- */
@@ -1670,6 +1630,7 @@ ul,ol{list-style:none;}
       setTimeout(()=>{
         showToast(`${t? t.emoji+' '+t.name : '打卡'} ${count} 次 已记录`);
         renderHome();
+        renderStats();
       }, 260);
     });
 
@@ -1701,6 +1662,7 @@ ul,ol{list-style:none;}
             Store.deleteRecord(recId);
             closeConfirm();
             renderHome();
+            renderStats();
             showToast('已删除该条记录');
           },
           '删除'
@@ -1787,7 +1749,7 @@ ul,ol{list-style:none;}
         showToast(editingTypeId? '已更新运动类型' : '已添加新运动类型', 'success');
         renderTypes();
         // 如果在首页，徽章与类型选择也需同步，刷新 home
-        if(currentTab==='home') renderHome();
+        if(currentTab==='home'){ renderHome(); renderStats(); }
       },150);
     });
 
@@ -1816,6 +1778,7 @@ ul,ol{list-style:none;}
     Store.load();
     bindEvents();
     renderHome();
+    renderStats();
 
     // PWA 注册（file:// 或 http://localhost 以外的 https 环境才注册）
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
