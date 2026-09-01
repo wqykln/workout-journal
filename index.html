@@ -1708,7 +1708,7 @@ ul,ol{list-style:none;}
       const token = this.getToken();
 
       try{
-        const state = Store.getState();
+        const state = Store.state;
         const data = { types:state.types, records:state.records, updatedAt:new Date().toISOString() };
         const content = this.encode(JSON.stringify(data, null, 2));
 
@@ -1934,6 +1934,7 @@ ul,ol{list-style:none;}
             renderTypes();
             renderStats();
             renderHome();
+            Sync.autoPush();
             showToast(`已删除「${t.name}」`);
           },
           '删除'
@@ -2000,6 +2001,7 @@ ul,ol{list-style:none;}
         emoji: pickedEmoji
       });
       closeSheet('sheet-type-edit');
+      Sync.autoPush();
       setTimeout(()=>{
         showToast(editingTypeId? '已更新运动类型' : '已添加新运动类型', 'success');
         renderTypes();
@@ -2040,7 +2042,7 @@ ul,ol{list-style:none;}
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
       window.addEventListener('load', ()=>{
         navigator.serviceWorker.register('sw.js', {scope:'./'}).then(reg=>{
-          console.log('[SW] registered:', reg.scope, 'v7');
+          console.log('[SW] registered:', reg.scope, 'v16');
         }).catch(err=>{
           console.warn('[SW] register failed:', err.message);
         });
