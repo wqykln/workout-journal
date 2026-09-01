@@ -1,5 +1,36 @@
 {
-  "types": [],
-  "records": [],
-  "updatedAt": null
+  "types": [
+    {
+      "id": "a",
+      "name": "深蹲",
+      "emoji": "💪",
+      "defaultCount": 30,
+      "deleted": false
+    },
+    {
+      "id": "b",
+      "name": "八段锦",
+      "emoji": "🧘",
+      "defaultCount": 2,
+      "deleted": false
+    },
+    {
+      "id": "c",
+      "name": "跳绳",
+      "emoji": "🪢",
+      "defaultCount": 200,
+      "deleted": false
+    }
+  ],
+  "records": [
+    {
+      "id": "r1788235708933",
+      "typeId": "a",
+      "count": 20,
+      "date": "2026-09-01",
+      "time": "12:08",
+      "createdAt": 1788235708933
+    }
+  ],
+  "updatedAt": "2026-09-01T04:08:28.933Z"
 }
