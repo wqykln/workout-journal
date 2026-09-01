@@ -602,6 +602,26 @@ ul,ol{list-style:none;}
 .about-name{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:3px;}
 .about-desc{font-size:13px;line-height:1.5;color:var(--ink-soft);}
 
+/* 云端同步 */
+.sync-section{
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  margin:0 auto 28px;
+}
+.btn-sync{
+  background:none;border:1.5px solid rgba(15,110,86,.3);
+  color:var(--accent);font-size:13px;font-weight:600;
+  font-family:inherit;cursor:pointer;
+  padding:6px 16px;border-radius:999px;
+  transition:all .2s;
+}
+.btn-sync:active{background:rgba(15,110,86,.06);}
+.sync-status{
+  font-size:12px;color:var(--ink-faint);
+}
+.sync-status.syncing{color:var(--amber);}
+.sync-status.success{color:var(--accent);}
+.sync-status.error{color:var(--primary);}
+
 /* ============ 弹层 Sheet（手账便签本风格） ============ */
 .mask{
   position:fixed;inset:0;
@@ -909,6 +929,12 @@ ul,ol{list-style:none;}
     <div class="about-section">
       <button class="btn-about" id="btn-about">📋 功能说明</button>
       <span class="version-label">V1.0</span>
+    </div>
+
+    <!-- 云端同步 -->
+    <div class="sync-section">
+      <button class="btn-sync" id="btn-sync">☁️ 云端同步</button>
+      <div class="sync-status" id="sync-status">未同步</div>
     </div>
   </section>
 
@@ -1636,6 +1662,168 @@ ul,ol{list-style:none;}
     }
   };
 
+  /* ============ 云端同步模块（GitHub 仓库文件存储） ============ */
+  const Sync = {
+    RAW_URL: 'https://raw.githubusercontent.com/wqykln/workout-journal/main/cloud-data.json',
+    API_URL: 'https://api.github.com/repos/wqykln/workout-journal/contents/cloud-data.json',
+    TOKEN_KEY: 'workout-github-token',
+    LAST_SYNC_KEY: 'workout-last-sync',
+    pushTimer: null,
+
+    getToken(){ return localStorage.getItem(this.TOKEN_KEY); },
+    setToken(t){ localStorage.setItem(this.TOKEN_KEY, t); },
+
+    /* 编码 Unicode → base64 */
+    encode(str){
+      const bytes = new TextEncoder().encode(str);
+      let bin = '';
+      for(const b of bytes) bin += String.fromCharCode(b);
+      return btoa(bin);
+    },
+
+    /* 从云端拉取（公开仓库可匿名读取） */
+    async pull(){
+      try{
+        const res = await fetch(this.RAW_URL + '?t=' + Date.now());
+        if(!res.ok) return { ok:false, error:'HTTP ' + res.status };
+        const data = await res.json();
+        if(!data.types || !data.records) return { ok:false, error:'数据格式错误' };
+
+        const cloudTime = data.updatedAt ? new Date(data.updatedAt).getTime() : 0;
+        const localTime = parseInt(localStorage.getItem(this.LAST_SYNC_KEY) || '0', 10);
+
+        if(cloudTime > localTime){
+          Store.state.types = data.types;
+          Store.state.records = data.records;
+          Store.persist();
+          return { ok:true, pulled:true, count:data.records.length };
+        }
+        return { ok:true, pulled:false };
+      }catch(e){
+        return { ok:false, error:e.message };
+      }
+    },
+
+    /* 上传到云端（需要 Token） */
+    async push(){
+      const token = this.getToken();
+      if(!token) return { ok:false, needToken:true };
+
+      try{
+        const state = Store.getState();
+        const data = { types:state.types, records:state.records, updatedAt:new Date().toISOString() };
+        const content = this.encode(JSON.stringify(data, null, 2));
+
+        /* 先获取 sha */
+        const getRes = await fetch(this.API_URL, {
+          headers:{ 'Authorization':'Bearer '+token, 'Accept':'application/vnd.github+json', 'User-Agent':'workout-app' }
+        });
+        const getJson = await getRes.json();
+        if(!getRes.ok) return { ok:false, error:getJson.message||'获取文件信息失败' };
+        const sha = getJson.sha;
+
+        /* 上传新内容 */
+        const putRes = await fetch(this.API_URL, {
+          method:'PUT',
+          headers:{
+            'Authorization':'Bearer '+token,
+            'Accept':'application/vnd.github+json',
+            'Content-Type':'application/json',
+            'User-Agent':'workout-app'
+          },
+          body:JSON.stringify({ message:'sync: '+new Date().toLocaleString('zh-CN'), content:content, sha:sha })
+        });
+
+        if(putRes.ok){
+          localStorage.setItem(this.LAST_SYNC_KEY, Date.now().toString());
+          return { ok:true };
+        }else{
+          const err = await putRes.json();
+          return { ok:false, error:err.message||'上传失败' };
+        }
+      }catch(e){
+        return { ok:false, error:e.message };
+      }
+    },
+
+    /* 手动同步（拉取 + 上传） */
+    async sync(){
+      const el = document.getElementById('sync-status');
+      if(el){ el.className='sync-status syncing'; el.textContent='同步中…'; }
+
+      const pullRes = await this.pull();
+      if(pullRes.ok && pullRes.pulled){
+        renderHome(); renderStats(); renderTypes();
+        showToast('☁️ 已从云端恢复 '+pullRes.count+' 条记录');
+      }
+
+      const pushRes = await this.push();
+      if(pushRes.needToken){ this.promptToken(); return; }
+
+      if(pushRes.ok){
+        this.updateStatus();
+        if(el){ el.className='sync-status success'; }
+        if(!pullRes.pulled) showToast('☁️ 数据已上传到云端');
+      }else{
+        if(el){ el.className='sync-status error'; el.textContent='同步失败'; }
+        showToast('❌ 同步失败: '+(pushRes.error||''));
+      }
+    },
+
+    /* 打卡后自动上传（debounce 3 秒） */
+    autoPush(){
+      clearTimeout(this.pushTimer);
+      this.pushTimer = setTimeout(()=>{
+        if(this.getToken()) this.push().then(r=>{ if(r.ok) this.updateStatus(); });
+      }, 3000);
+    },
+
+    /* 打开 App 时自动拉取 */
+    autoPull(){
+      this.pull().then(r=>{
+        if(r.ok && r.pulled){
+          renderHome(); renderStats(); renderTypes();
+          showToast('☁️ 已从云端同步数据');
+        }
+        this.updateStatus();
+      });
+    },
+
+    promptToken(){
+      const token = prompt(
+        '请输入 GitHub Token 进行云端同步授权\n\n' +
+        'Token 只存在您的手机本地，不会泄露。\n' +
+        '获取地址: github.com/settings/tokens/new\n' +
+        '勾选 repo 权限即可'
+      );
+      if(token && token.trim()){
+        this.setToken(token.trim());
+        this.sync();
+      }
+    },
+
+    updateStatus(){
+      const el = document.getElementById('sync-status');
+      if(!el) return;
+      const last = parseInt(localStorage.getItem(this.LAST_SYNC_KEY) || '0', 10);
+      if(last){
+        const d = new Date(last);
+        const now = new Date();
+        const diff = now - d;
+        let txt;
+        if(diff < 60000) txt = '刚刚同步';
+        else if(diff < 3600000) txt = Math.floor(diff/60000) + ' 分钟前同步';
+        else if(diff < 86400000) txt = Math.floor(diff/3600000) + ' 小时前同步';
+        else txt = (d.getMonth()+1) + '/' + d.getDate() + ' 同步';
+        el.className = 'sync-status success';
+        el.textContent = txt;
+      }else{
+        el.className = 'sync-status';
+        el.textContent = '未同步';
+      }
+    }
+  };
+
   /* =============================================================
    *                       模块六：Toast
    * ============================================================= */
@@ -1703,6 +1891,7 @@ ul,ol{list-style:none;}
         showToast(`${t? t.emoji+' '+t.name : '打卡'} ${count} 次 已记录`);
         renderHome();
         renderStats();
+        Sync.autoPush();
       }, 260);
     });
 
@@ -1735,6 +1924,7 @@ ul,ol{list-style:none;}
             closeConfirm();
             renderHome();
             renderStats();
+            Sync.autoPush();
             showToast('已删除该条记录');
           },
           '删除'
@@ -1771,6 +1961,9 @@ ul,ol{list-style:none;}
     // 功能说明
     document.getElementById('btn-about').addEventListener('click', ()=>openSheet('sheet-about'));
 
+    // 云端同步
+    document.getElementById('btn-sync').addEventListener('click', ()=>Sync.sync());
+
     // 清空所有打卡数据
     document.getElementById('btn-clear-all').addEventListener('click', ()=>{
       openConfirm(
@@ -1782,6 +1975,7 @@ ul,ol{list-style:none;}
           renderHome();
           renderStats();
           renderTypes();
+          Sync.autoPush();
           showToast('已清空所有打卡数据', 'success');
         },
         '清空'
@@ -1854,6 +2048,7 @@ ul,ol{list-style:none;}
     bindEvents();
     renderHome();
     renderStats();
+    Sync.autoPull();
 
     // PWA 注册（file:// 或 http://localhost 以外的 https 环境才注册）
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
