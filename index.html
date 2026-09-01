@@ -1198,6 +1198,8 @@ ul,ol{list-style:none;}
     persist(){
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state)); }
       catch(e){ console.warn('persist failed',e); showToast('保存失败：存储异常','warn'); }
+      // 自动云端同步（3秒 debounce 在 autoPush 内部保证只推一次）
+      if(this._autoPush) this._autoPush();
     },
 
     /* 首次打开：仅保留预设类型，无历史记录（给用户干净起点） */
@@ -1877,7 +1879,6 @@ ul,ol{list-style:none;}
         showToast(`${t? t.emoji+' '+t.name : '打卡'} ${count} 次 已记录`);
         renderHome();
         renderStats();
-        Sync.autoPush();
       }, 260);
     });
 
@@ -1910,7 +1911,6 @@ ul,ol{list-style:none;}
             closeConfirm();
             renderHome();
             renderStats();
-            Sync.autoPush();
             showToast('已删除该条记录');
           },
           '删除'
@@ -1934,7 +1934,6 @@ ul,ol{list-style:none;}
             renderTypes();
             renderStats();
             renderHome();
-            Sync.autoPush();
             showToast(`已删除「${t.name}」`);
           },
           '删除'
@@ -1962,7 +1961,6 @@ ul,ol{list-style:none;}
           renderHome();
           renderStats();
           renderTypes();
-          Sync.autoPush();
           showToast('已清空所有打卡数据', 'success');
         },
         '清空'
@@ -2001,7 +1999,6 @@ ul,ol{list-style:none;}
         emoji: pickedEmoji
       });
       closeSheet('sheet-type-edit');
-      Sync.autoPush();
       setTimeout(()=>{
         showToast(editingTypeId? '已更新运动类型' : '已添加新运动类型', 'success');
         renderTypes();
@@ -2033,6 +2030,9 @@ ul,ol{list-style:none;}
    * ============================================================= */
   function init(){
     Store.load();
+    // 让 Store 的所有写入操作（addRecord/deleteRecord/upsertType/softDeleteType/resetAll）
+    // 在 persist 之后自动触发云端同步，debounce 由 Sync.autoPush() 内部保证
+    Store._autoPush = () => Sync.autoPush();
     bindEvents();
     renderHome();
     renderStats();
@@ -2042,7 +2042,7 @@ ul,ol{list-style:none;}
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
       window.addEventListener('load', ()=>{
         navigator.serviceWorker.register('sw.js', {scope:'./'}).then(reg=>{
-          console.log('[SW] registered:', reg.scope, 'v16');
+          console.log('[SW] registered:', reg.scope, 'v17');
         }).catch(err=>{
           console.warn('[SW] register failed:', err.message);
         });
