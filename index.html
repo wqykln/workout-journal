@@ -602,26 +602,6 @@ ul,ol{list-style:none;}
 .about-name{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:3px;}
 .about-desc{font-size:13px;line-height:1.5;color:var(--ink-soft);}
 
-/* 云端同步 */
-.sync-section{
-  display:flex;align-items:center;justify-content:center;gap:14px;
-  margin:0 auto 28px;
-}
-.btn-sync{
-  background:none;border:1.5px solid rgba(15,110,86,.3);
-  color:var(--accent);font-size:13px;font-weight:600;
-  font-family:inherit;cursor:pointer;
-  padding:6px 16px;border-radius:999px;
-  transition:all .2s;
-}
-.btn-sync:active{background:rgba(15,110,86,.06);}
-.sync-status{
-  font-size:12px;color:var(--ink-faint);
-}
-.sync-status.syncing{color:var(--amber);}
-.sync-status.success{color:var(--accent);}
-.sync-status.error{color:var(--primary);}
-
 /* ============ 弹层 Sheet（手账便签本风格） ============ */
 .mask{
   position:fixed;inset:0;
@@ -928,13 +908,7 @@ ul,ol{list-style:none;}
 
     <div class="about-section">
       <button class="btn-about" id="btn-about">📋 功能说明</button>
-      <span class="version-label">V1.1</span>
-    </div>
-
-    <!-- 云端同步 -->
-    <div class="sync-section">
-      <button class="btn-sync" id="btn-sync">☁️ 云端同步</button>
-      <div class="sync-status" id="sync-status">未同步</div>
+      <span class="version-label">V1.2</span>
     </div>
   </section>
 
@@ -1059,14 +1033,14 @@ ul,ol{list-style:none;}
         <span class="about-ico">⚙️</span>
         <div class="about-text">
           <div class="about-name">类型管理</div>
-          <div class="about-desc">新增、编辑、删除运动类型，设置默认数量和图标。删除类型后历史记录保留标注。</div>
+          <div class="about-desc">自由新增、编辑、删除运动类型，可自定义名称、默认数量和图标。</div>
         </div>
       </div>
       <div class="about-item">
         <span class="about-ico">☁️</span>
         <div class="about-text">
-          <div class="about-name">云端同步 · 自动</div>
-          <div class="about-desc">打卡后自动上传到云端；每次打开自动从云端拉取最新数据。换手机打开立即恢复，多设备数据一致。数据同时保存在手机本地，无网络也能使用。</div>
+          <div class="about-name">云端同步 · 全自动</div>
+          <div class="about-desc">任何增删改操作（打卡、删卡、增删改类型、清空数据）都会自动同步到云端；每次打开 App 自动拉取最新数据。换手机或多设备数据实时一致，全程无需手动操作。</div>
         </div>
       </div>
       <div class="about-item">
@@ -1947,9 +1921,6 @@ ul,ol{list-style:none;}
     // 功能说明
     document.getElementById('btn-about').addEventListener('click', ()=>openSheet('sheet-about'));
 
-    // 云端同步
-    document.getElementById('btn-sync').addEventListener('click', ()=>Sync.sync());
-
     // 清空所有打卡数据
     document.getElementById('btn-clear-all').addEventListener('click', ()=>{
       openConfirm(
@@ -2042,7 +2013,7 @@ ul,ol{list-style:none;}
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
       window.addEventListener('load', ()=>{
         navigator.serviceWorker.register('sw.js', {scope:'./'}).then(reg=>{
-          console.log('[SW] registered:', reg.scope, 'v17');
+          console.log('[SW] registered:', reg.scope, 'v18');
         }).catch(err=>{
           console.warn('[SW] register failed:', err.message);
         });
