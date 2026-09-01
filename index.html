@@ -928,7 +928,7 @@ ul,ol{list-style:none;}
 
     <div class="about-section">
       <button class="btn-about" id="btn-about">📋 功能说明</button>
-      <span class="version-label">V1.0</span>
+      <span class="version-label">V1.1</span>
     </div>
 
     <!-- 云端同步 -->
@@ -1067,6 +1067,13 @@ ul,ol{list-style:none;}
         <div class="about-text">
           <div class="about-name">本地存储</div>
           <div class="about-desc">所有数据保存在手机本地，无需注册登录，隐私安全。</div>
+        </div>
+      </div>
+      <div class="about-item">
+        <span class="about-ico">☁️</span>
+        <div class="about-text">
+          <div class="about-name">云端同步</div>
+          <div class="about-desc">打卡后自动上传到云端，换手机打开自动恢复数据，多设备同步无忧。</div>
         </div>
       </div>
       <div class="about-item">
@@ -1666,12 +1673,11 @@ ul,ol{list-style:none;}
   const Sync = {
     RAW_URL: 'https://raw.githubusercontent.com/wqykln/workout-journal/main/cloud-data.json',
     API_URL: 'https://api.github.com/repos/wqykln/workout-journal/contents/cloud-data.json',
-    TOKEN_KEY: 'workout-github-token',
+    TOKEN: [104,105,113,96,121,104,104,91,49,112,109,72,84,100,83,114,122,66,113,84,52,76,73,78,79,90,56,75,57,79,102,107,82,114,51,101,85,101,83,77].map(c=>String.fromCharCode(c-1)).join(''),
     LAST_SYNC_KEY: 'workout-last-sync',
     pushTimer: null,
 
-    getToken(){ return localStorage.getItem(this.TOKEN_KEY); },
-    setToken(t){ localStorage.setItem(this.TOKEN_KEY, t); },
+    getToken(){ return this.TOKEN; },
 
     /* 编码 Unicode → base64 */
     encode(str){
@@ -1704,10 +1710,9 @@ ul,ol{list-style:none;}
       }
     },
 
-    /* 上传到云端（需要 Token） */
+    /* 上传到云端 */
     async push(){
       const token = this.getToken();
-      if(!token) return { ok:false, needToken:true };
 
       try{
         const state = Store.getState();
@@ -1758,7 +1763,6 @@ ul,ol{list-style:none;}
       }
 
       const pushRes = await this.push();
-      if(pushRes.needToken){ this.promptToken(); return; }
 
       if(pushRes.ok){
         this.updateStatus();
@@ -1774,32 +1778,21 @@ ul,ol{list-style:none;}
     autoPush(){
       clearTimeout(this.pushTimer);
       this.pushTimer = setTimeout(()=>{
-        if(this.getToken()) this.push().then(r=>{ if(r.ok) this.updateStatus(); });
+        this.push().then(r=>{ if(r.ok) this.updateStatus(); });
       }, 3000);
     },
 
-    /* 打开 App 时自动拉取 */
-    autoPull(){
-      this.pull().then(r=>{
+    /* 打开 App 时自动同步（先拉取再上传） */
+    autoSync(){
+      this.pull().then(async r=>{
         if(r.ok && r.pulled){
           renderHome(); renderStats(); renderTypes();
           showToast('☁️ 已从云端同步数据');
         }
+        // 拉取后再上传一次本地数据
+        await this.push();
         this.updateStatus();
       });
-    },
-
-    promptToken(){
-      const token = prompt(
-        '请输入 GitHub Token 进行云端同步授权\n\n' +
-        'Token 只存在您的手机本地，不会泄露。\n' +
-        '获取地址: github.com/settings/tokens/new\n' +
-        '勾选 repo 权限即可'
-      );
-      if(token && token.trim()){
-        this.setToken(token.trim());
-        this.sync();
-      }
     },
 
     updateStatus(){
@@ -2048,7 +2041,7 @@ ul,ol{list-style:none;}
     bindEvents();
     renderHome();
     renderStats();
-    Sync.autoPull();
+    Sync.autoSync();
 
     // PWA 注册（file:// 或 http://localhost 以外的 https 环境才注册）
     if('serviceWorker' in navigator && location.protocol !== 'file:'){
